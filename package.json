@@ -1,0 +1,54 @@
+{
+    "name": "awash-survey",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "node --max-old-space-size=4096 node_modules/next/dist/bin/next dev -p 3090",
+        "build": "node --max-old-space-size=4096 node_modules/next/dist/bin/next build",
+        "start": "node --max-old-space-size=4096 node_modules/next/dist/bin/next start -p 3090",
+        "db:generate": "drizzle-kit generate",
+        "db:migrate": "tsx db/migrate.ts",
+        "db:seed": "tsx db/seed/seed.ts",
+        "db:seed:branches": "tsx scripts/import-branches.ts",
+        "db:backup": "powershell -ExecutionPolicy Bypass -File scripts/backup-db.ps1",
+        "parts:import": "tsx scripts/import-parts.ts",
+        "lint": "next lint",
+        "typecheck": "tsc --noEmit",
+        "preflight": "npm run typecheck && npm run lint && npm run build"
+    },
+    "dependencies": {
+        "@auth/drizzle-adapter": "^1.7.4",
+        "@react-pdf/renderer": "^4.1.6",
+        "bcryptjs": "^2.4.3",
+        "dotenv": "^16.4.7",
+        "drizzle-orm": "^0.45.4",
+        "lucide-react": "^1.61.0",
+        "next": "^15.5.27",
+        "next-auth": "5.0.0-beta.32",
+        "next-themes": "^0.4.6",
+        "pg": "^8.13.1",
+        "react": "19.0.0",
+        "react-dom": "19.0.0",
+        "server-only": "^0.0.1",
+        "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
+        "zod": "^3.24.1"
+    },
+    "devDependencies": {
+        "@types/bcryptjs": "^2.4.6",
+        "@types/node": "^22.10.2",
+        "@types/pg": "^8.11.10",
+        "@types/react": "^19.0.2",
+        "@types/react-dom": "^19.0.2",
+        "autoprefixer": "^10.4.20",
+        "drizzle-kit": "^0.31.11",
+        "postcss": "^8.5.24",
+        "tailwindcss": "^3.4.19",
+        "tsx": "^4.19.2",
+        "typescript": "^5.7.2"
+    },
+    "overrides": {
+        "braces": "^3.0.3",
+        "esbuild": "^0.25.0"
+    }
+}

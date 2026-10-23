@@ -1,0 +1,1 @@
+export default function HelpPage() { return <div>Need help? Call 1234</div> }

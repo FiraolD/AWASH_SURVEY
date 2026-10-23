@@ -1,0 +1,22 @@
+export const SAMPLE_PARTS: Array<{ en: string; am: string }> = [
+    { en: "Front bumper",                          am: "የፈት ፓራውልት" },
+    { en: "Front bumper chrome",                   am: "የፊት ፓራውልት ክሮም" },
+    { en: "RHS head light",                        am: "የቀኝ የግንባር መብራት" },
+    { en: "LHS head light",                        am: "የግራ የግንባር መብራት" },
+    { en: "Hood",                                  am: "ኮፈን" },
+    { en: "Windshield glass",                      am: "የግንባር መስታወት" },
+    { en: "Radiator",                              am: "ራድያተር" },
+    { en: "Battery",                               am: "ባትሪ" },
+    { en: "Wheel rim",                             am: "ቸርኬ" },
+    { en: "Tire",                                  am: "ጎማ" },
+    { en: "RHS FR door panel",                     am: "የቀኝ የፊት በር ብረቱ" },
+    { en: "LHS FR door panel",                     am: "የግራ የፊት በር ብረቱ" },
+    { en: "RHS tail light",                        am: "የቀኝ የኋላ መብራት" },
+    { en: "LHS tail light",                        am: "የግራ የኋላ መብራት" },
+    { en: "Grill",                                 am: "ማስከርያ" },
+    { en: "Labor to fit",                          am: "መግጠምያ" },
+    {
+      en: "Complete body straighting and painting",
+      am: "ሙሉ ቦዲ ማስተካከል እና መቀባት",
+    },
+  ];
