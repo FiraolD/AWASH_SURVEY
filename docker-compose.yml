@@ -27,7 +27,7 @@ services:
       AUTH_TRUST_HOST: "true"
       NODE_ENV: production
     ports:
-      - "3090:3090"
+      - "3099:3099"
 
 volumes:
   pgdata:
