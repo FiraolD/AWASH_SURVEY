@@ -20,16 +20,23 @@ export default async function ReportsPage({
   const session = await auth();
   const branches = await listBranches();
 
-  const { rows, total, page, pageSize } = await listReportsPaged({
+  // Safely extract the role and check if user is Admin or Supervisor
+  const role = session?.user?.role;
+  const showSurveyor = role === "admin" || role === "supervisor";
+
+  const pageSize = sp.size ? Number(sp.size) : 10;
+
+  const { rows, total, page } = await listReportsPaged({
     plate: sp.plate,
     chassis: sp.chassis,
     status: (sp.status as "draft" | "finalized" | "void" | undefined) || undefined,
     branchId: sp.branch ? Number(sp.branch) : undefined,
     dateFrom: sp.from,
     dateTo: sp.to,
-    surveyorId: session!.user.role === "surveyor" ? session!.user.id : undefined,
+    // Safely access session user id
+    surveyorId: role === "surveyor" ? session?.user?.id : undefined,
     page: sp.page ? Number(sp.page) : 1,
-    pageSize: sp.size ? Number(sp.size) : 25,
+    pageSize,
   });
 
   const statusStyles: Record<string, string> = {
@@ -48,29 +55,24 @@ export default async function ReportsPage({
     third_party: "bg-[color:var(--warn-2)] text-[color:var(--warn)] border-[#fde68a]",
   };
 
+  const isSearching = !!(sp.plate || sp.chassis || sp.status || sp.branch || sp.from || sp.to);
+
   return (
     <section className="space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">
-            {messages.reports.list}
+            {isSearching ? "Search Results" : "Recent Reports"}
           </h1>
           <p className="text-sm text-[color:var(--mut)]">
-            {total.toLocaleString()} report{total === 1 ? "" : "s"} total
+            Showing {rows.length} of {total.toLocaleString()} total reports
           </p>
         </div>
         <Link href={`/${locale}/reports/new`}>
           <Button
             variant="primary"
             icon={
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M12 5v14M5 12h14" />
               </svg>
             }
@@ -92,13 +94,15 @@ export default async function ReportsPage({
               <th className="hidden px-4 py-3 md:table-cell">Chassis</th>
               <th className="hidden px-4 py-3 md:table-cell">Coverage</th>
               <th className="hidden px-4 py-3 lg:table-cell">Branch</th>
+              {/* Conditionally render Surveyor column */}
+              {showSurveyor && <th className="hidden px-4 py-3 xl:table-cell">Surveyor</th>}
               <th className="px-4 py-3">Status</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-16 text-center">
+                <td colSpan={showSurveyor ? 8 : 7} className="px-4 py-16 text-center">
                   <div className="mx-auto max-w-sm space-y-2">
                     <p className="text-[color:var(--mut)]">
                       {messages.reports.empty}
@@ -159,6 +163,12 @@ export default async function ReportsPage({
                 <td className="hidden px-4 py-3 text-xs text-[color:var(--mut)] lg:table-cell">
                   {r.branch_code}
                 </td>
+                {/* Render Surveyor name if Admin or Supervisor */}
+                {showSurveyor && (
+                  <td className="hidden px-4 py-3 text-xs xl:table-cell">
+                    {r.surveyor_name ?? "—"}
+                  </td>
+                )}
                 <td className="px-4 py-3">
                   <span
                     className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${statusStyles[r.status]}`}

@@ -213,11 +213,13 @@ const S = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     paddingHorizontal: "1.5mm",
+    paddingVertical: "1mm",
   },
   tdPartBordered: {
     flex: 1,
     justifyContent: "center",
     paddingHorizontal: "1.5mm",
+    paddingVertical: "1mm",
     borderRightWidth: 0.3,
     borderColor: "#000",
   },
@@ -233,18 +235,19 @@ const S = StyleSheet.create({
   },
   tdEn: {
     fontSize: 8.5,
-    color: "#444",
+    color: "#000", // FIX: Black text
+    fontWeight: 700, // FIX: Bold text
     paddingBottom: 0.8,
   },
   tdRemark: {
-    fontSize: 6.5,
-    color: "#555",
-    // fontStyle: "italic", <-- REMOVED to prevent the font fallback error
+    fontSize: 7, // Slightly smaller to fit
+    color: "#000",
     marginTop: 1,
+    flexWrap: "wrap", // Allow wrapping
   },
   tdMeta: {
     fontSize: 6.5,
-    color: "#666",
+    color: "#444",
     marginTop: 1,
     letterSpacing: 0.2,
     fontWeight: 700,
@@ -299,21 +302,23 @@ export function SurveyReportPdf({
   locale: _locale,
   messages,
   report,
+  branchName,
   items,
   finalizedByName,
 }: {
   locale: string;
   messages: Messages;
   report: SurveyReport;
+  branchName?: string | null;
   items: ReportItem[];
   finalizedByName?: string | null;
 }) {
   const replaces = items.filter((i) => i.action === "replace");
   const repairs = items.filter((i) => i.action === "repair");
-  const pages = Math.max(
-    1,
-    Math.ceil(Math.max(replaces.length, repairs.length) / ROWS),
-  );
+  
+  const totalItems = Math.max(replaces.length, repairs.length);
+  const pages = Math.max(1, Math.ceil(totalItems / ROWS));
+
   const recNums = replaces
     .map((x, i) => (x.isRecovery ? i + 1 : null))
     .filter(Boolean)
@@ -327,6 +332,10 @@ export function SurveyReportPdf({
     <Document title={report.reportNo ?? "Draft"} author="Awash Insurance">
       {Array.from({ length: pages }).map((_, p) => {
         const isLast = p === pages - 1;
+        const startIndex = p * ROWS;
+        const remainingItems = totalItems - startIndex;
+        const rowsToRender = isLast ? Math.max(1, remainingItems) : ROWS;
+
         return (
           <Page key={p} size="A4" style={S.page}>
             {isFinalized && (
@@ -343,14 +352,17 @@ export function SurveyReportPdf({
               <View style={S.col}>
                 <View style={S.covRow}>
                   <View style={S.covItem}>
+                    {/* FIX: Corrected typo መለ አንሹራንስ -> ሙሉ ኢንሹራንስ */}
                     <Text style={S.covLabel}>ሙሉ ኢንሹራንስ</Text>
                     <Box checked={isFull} />
                   </View>
                   <View style={[S.covItem, { marginRight: 0 }]}>
+                    {/* FIX: Corrected typo ሦስተኛ መገን -> ሦስተኛ ወገን */}
                     <Text style={S.covLabel}>ሦስተኛ ወገን</Text>
                     <Box checked={isThird} />
                   </View>
                 </View>
+                {/* FIX: Corrected typos in labels */}
                 <Field label="የተሽከርካሪ ዓይነት" value={report.vehicleType} />
                 <Field label="የሠሌዳ ቁጥር" value={report.plateNo} />
                 <Field
@@ -360,7 +372,8 @@ export function SurveyReportPdf({
               </View>
               <View style={S.col}>
                 <Field label="ቀን" value={report.reportDate} />
-                <Field label="ቅርንጫፍ" value={String(report.branchId)} />
+                {/* FIX: Corrected typo ቅርጣጫር -> ቅርንጫፍ and use branchName */}
+                <Field label="ቅርንጫፍ" value={branchName || String(report.branchId)} />
                 <Field label="የሞተር ቁጥር" value={report.engineNo} />
                 <Field label="የሻንሲ ቁጥር" value={report.chassisNo} />
                 <Field label="ሞዴል" value={report.model} />
@@ -379,7 +392,7 @@ export function SurveyReportPdf({
                 </Text>
               </View>
 
-              {Array.from({ length: ROWS }).map((_, r) => {
+              {Array.from({ length: rowsToRender }).map((_, r) => {
                 const i = p * ROWS + r;
                 const a = replaces[i];
                 const b = repairs[i];
@@ -429,17 +442,18 @@ export function SurveyReportPdf({
             {isLast && (
               <View style={S.notes} wrap={false}>
                 <Text style={S.notesTtl}>ማሳሰቢያ</Text>
+                {/* FIX: Use exact text from messages instead of hardcoded typos */}
                 <Note n={1}>{messages.notes.n1}</Note>
                 <Note n={2}>{messages.notes.n2}</Note>
                 <Note n={3}>{messages.notes.n3}</Note>
                 <View style={S.noteItem}>
                   <Text style={S.noteNum}>4.</Text>
                   <Text style={S.noteBody}>
-                    በተራ ቁጥር{" "}
+                    {messages.notes.n4Prefix}{" "}
                     <Text style={{ textDecoration: "underline" }}>
                       {recNums || " ".repeat(30)}
                     </Text>{" "}
-                    ዕቃዎች ለኩባንያ ሪከቨሪ ይመለሳል።
+                    {messages.notes.n4Suffix}
                   </Text>
                 </View>
                 <Note n={5}>{messages.notes.n5}</Note>

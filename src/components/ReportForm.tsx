@@ -173,8 +173,8 @@ export function ReportForm({
     return () => document.removeEventListener("keydown", onKey);
   }, [undo, readonly]);
 
-  const nextPosition = (action: "replace" | "repair") =>
-    items.filter((i) => i.action === action).reduce((m, i) => Math.max(m, i.position), 0) + 1;
+    const nextPosition = (action: "replace" | "repair") =>
+    (items || []).filter((i) => i.action === action).reduce((m, i) => Math.max(m, i.position), 0) + 1;
 
   const addPart = useCallback(
     (
@@ -799,18 +799,22 @@ export function ReportForm({
               <summary className="cursor-pointer text-sm font-semibold text-[color:var(--acc)] hover:underline">
                 {messages.form.addManual}
               </summary>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <Input
-                  value={custom.en}
-                  onChange={(e) => setCustom({ ...custom, en: e.target.value })}
-                  placeholder={messages.form.enName}
-                />
-                <Input
-                  value={custom.am}
-                  onChange={(e) => setCustom({ ...custom, am: e.target.value })}
-                  placeholder={messages.form.amName}
-                />
-              </div>
+              // Inside ReportForm.tsx, find the manual part addition section:
+
+<div className="mt-3 grid grid-cols-2 gap-2">
+  <Input
+    value={custom.en}
+    onChange={(e) => setCustom({ ...custom, en: e.target.value })}
+    placeholder={messages.form.enName}
+    className="font-sans" // English input can use the default sans font
+  />
+  <Input
+    value={custom.am}
+    onChange={(e) => setCustom({ ...custom, am: e.target.value })}
+    placeholder={messages.form.amName}
+    className="font-ethiopic" // Explicitly use Ethiopic font for Amharic
+  />
+</div>
               <div className="mt-2 flex gap-2">
                 <Button variant="outline-danger" size="sm" onClick={askCustomReplace}>
                   + {tr("መተኪያ", "Replace")}

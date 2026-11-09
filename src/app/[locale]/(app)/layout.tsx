@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/server/auth";
-import { getLocale, getMessages } from "@/lib/i18n";
+import { getLocale, getMessages, isLocale, type Locale } from "@/lib/i18n";
 import { can } from "@/server/permissions";
 import { env } from "@/lib/env";
 import { LangSwitch } from "@/components/LangSwitch";
@@ -16,12 +16,17 @@ export default async function AppLayout({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+  
+  // Ensure the locale from the URL is valid, fallback to default
+  if (!isLocale(locale)) redirect(`/am/login`);
+
   const session = await auth();
   if (!session?.user) redirect(`/${locale}/login`);
 
-  const messages = getMessages(await getLocale());
+  // Now we know it's a valid Locale type
+  const currentLocale = locale as Locale;
+  const messages = getMessages(currentLocale);
   const role = session.user.role;
-  const currentLocale = await getLocale();
 
   return (
     <div className="min-h-screen">
@@ -46,19 +51,19 @@ export default async function AppLayout({
             </div>
           </Link>
 
-          {/* Navigation — driven by capabilities, not roles */}
+          {/* Navigation */}
           <AppNav
             locale={locale}
             canSeeParts={can(role, "parts.view")}
             canSeeUsers={can(role, "users.manage")}
             canSeeAudit={can(role, "audit.view")}
-            canSeeSql={can(role, "sql.run") && env.ALLOW_SQL_CONSOLE}
+            //canSeeSql={can(role, "sql.run") && env.ALLOW_SQL_CONSOLE}
             labels={{
               reports: messages.nav.reports,
               parts: messages.nav.parts,
               users: messages.nav.users,
               audit: messages.audit.title,
-              sql: messages.nav.sql ?? "Database",
+              //sql: messages.nav.sql ?? "Database",
             }}
           />
 

@@ -58,28 +58,24 @@ export function AuditLogTable({
           </tr>
         </thead>
         <tbody>
-          {rows.length === 0 && (
+          {(!rows || rows.length === 0) && (
             <tr>
-              <td
-                colSpan={5}
-                className="px-4 py-12 text-center text-[color:var(--mut)]"
-              >
+              <td colSpan={5} className="px-4 py-12 text-center text-[color:var(--mut)]">
                 {tr("ምንም የኦዲት መዝገብ የለም", "No audit entries")}
               </td>
             </tr>
           )}
 
-          {rows.map((r) => {
+          {rows?.map((r) => {
             const isOpen = open.has(r.id);
+            // Safe fallback: if r.diff is null, use empty object
             const diffKeys = r.diff ? Object.keys(r.diff) : [];
 
             return (
               <Fragment key={r.id}>
                 <tr className="border-t border-[color:var(--line)] hover:bg-[color:var(--bg)]/50">
                   <td className="px-4 py-3 align-top tabular-nums text-xs text-[color:var(--mut)]">
-                    {new Date(r.at).toLocaleString(
-                      locale === "am" ? "am-ET" : "en-GB",
-                    )}
+                    {new Date(r.at).toLocaleString(locale === "am" ? "am-ET" : "en-GB")}
                   </td>
                   <td className="px-4 py-3 align-top">
                     <div className="font-medium">
@@ -92,12 +88,7 @@ export function AuditLogTable({
                     )}
                   </td>
                   <td className="px-4 py-3 align-top">
-                    <span
-                      className={
-                        "rounded-full px-2 py-0.5 text-xs font-medium " +
-                        (actionStyle[r.action] ?? "")
-                      }
-                    >
+                    <span className={"rounded-full px-2 py-0.5 text-xs font-medium " + (actionStyle[r.action] ?? "")}>
                       {actionLabel[r.action] ?? r.action}
                     </span>
                   </td>
@@ -110,9 +101,7 @@ export function AuditLogTable({
                   <td className="px-4 py-3 align-top text-right">
                     <Button variant="ghost" size="xs" onClick={() => toggle(r.id)}>
                       {isOpen ? "▲" : "▼"}{" "}
-                      {r.action === "UPDATE" && diffKeys.length > 0
-                        ? `(${diffKeys.length})`
-                        : ""}
+                      {r.action === "UPDATE" && diffKeys.length > 0 ? `(${diffKeys.length})` : ""}
                     </Button>
                   </td>
                 </tr>
@@ -134,20 +123,12 @@ export function AuditLogTable({
                               </tr>
                             </thead>
                             <tbody>
-                              {Object.entries(r.diff).map(([field, { from, to }]) => (
-                                <tr
-                                  key={field}
-                                  className="border-t border-[color:var(--line)]"
-                                >
-                                  <td className="py-1.5 pr-3 font-mono font-semibold">
-                                    {field}
-                                  </td>
-                                  <td className="py-1.5 pr-3 text-[color:var(--rep)]">
-                                    {formatValue(from)}
-                                  </td>
-                                  <td className="py-1.5 text-[color:var(--success)]">
-                                    {formatValue(to)}
-                                  </td>
+                              {/* SAFE FALLBACK ADDED HERE */}
+                              {Object.entries(r.diff || {}).map(([field, { from, to }]) => (
+                                <tr key={field} className="border-t border-[color:var(--line)]">
+                                  <td className="py-1.5 pr-3 font-mono font-semibold">{field}</td>
+                                  <td className="py-1.5 pr-3 text-[color:var(--rep)]">{formatValue(from)}</td>
+                                  <td className="py-1.5 text-[color:var(--success)]">{formatValue(to)}</td>
                                 </tr>
                               ))}
                             </tbody>
@@ -159,7 +140,7 @@ export function AuditLogTable({
                             {tr("ሙሉ መዝገብ", "Full record")}
                           </div>
                           <pre className="overflow-auto rounded bg-white p-3 font-mono text-[11px] leading-snug">
-                            {JSON.stringify(r.changes, null, 2)}
+                            {JSON.stringify(r.changes || {}, null, 2)}
                           </pre>
                         </>
                       )}

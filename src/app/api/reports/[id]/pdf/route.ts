@@ -29,6 +29,7 @@ export async function GET(
       locale: lang,
       messages,
       report: data.report,
+      branchName: data.branchName, // <--- PASSED BRANCH NAME HERE
       items: data.items,
     }),
   );

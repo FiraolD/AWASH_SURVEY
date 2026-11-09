@@ -19,7 +19,6 @@ export function LoginForm({
 
   return (
     <div className="w-full max-w-md anim-slide">
-      {/* Mobile brand — shows above the form on small screens */}
       <div className="mb-8 flex items-center justify-center gap-3 lg:hidden">
         <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-[color:var(--line)]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -27,13 +26,10 @@ export function LoginForm({
         </div>
         <div className="leading-tight">
           <div className="text-sm font-semibold">{messages.app.title}</div>
-          <div className="text-[11px] text-[color:var(--mut)]">
-            {messages.app.subtitle}
-          </div>
+          <div className="text-[11px] text-[color:var(--mut)]">{messages.app.subtitle}</div>
         </div>
       </div>
 
-      {/* Card */}
       <div className="rounded-[var(--r-lg)] border border-[color:var(--line)] bg-white p-8 shadow-[var(--shadow-lg)] sm:p-10">
         <div className="mb-8">
           <h1 className="text-2xl font-semibold tracking-tight">
@@ -46,7 +42,6 @@ export function LoginForm({
           </p>
         </div>
 
-        {/* Error */}
         {error && (
           <div className="mb-5 flex items-start gap-3 rounded-[var(--r)] border border-[#fecaca] bg-[color:var(--rep-2)] px-3.5 py-3 anim-fade">
             <span className="mt-0.5 flex h-5 w-5 flex-none items-center justify-center rounded-full bg-[color:var(--rep)] text-[10px] font-bold text-white">
@@ -59,38 +54,29 @@ export function LoginForm({
         )}
 
         <form action={action} className="space-y-5">
-          {/* Email */}
+          {/* Username */}
           <div>
             <label
-              htmlFor="email"
+              htmlFor="username"
               className="mb-1.5 block text-xs font-medium text-[color:var(--mut)]"
             >
-              {messages.login.email}
+              Username
             </label>
             <div className="relative">
               <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[color:var(--mut)]">
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <rect x="2" y="4" width="20" height="16" rx="2" />
-                  <path d="m22 7-10 5L2 7" />
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
                 </svg>
               </span>
               <input
-                id="email"
-                name="email"
-                type="email"
+                id="username"
+                name="username"
+                type="text"
                 required
-                autoComplete="email"
+                autoComplete="username"
                 autoFocus
-                placeholder="you@awash.example"
+                placeholder="e.g. firaol.d"
                 className="w-full rounded-[var(--r)] border border-[color:var(--line-2)] bg-white py-2.5 pl-10 pr-3 text-sm placeholder:text-[color:var(--mut)] focus:border-[color:var(--acc)] focus:outline-none focus:ring-2 focus:ring-[color:var(--acc-ring)] transition-shadow"
               />
             </div>
@@ -106,16 +92,7 @@ export function LoginForm({
             </label>
             <div className="relative">
               <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[color:var(--mut)]">
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="11" width="18" height="11" rx="2" />
                   <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                 </svg>
@@ -152,21 +129,10 @@ export function LoginForm({
             </div>
           </div>
 
-          {/* Submit */}
           <SubmitButton label={messages.login.submit} />
         </form>
 
-        {/* Divider */}
-        <div className="my-6 flex items-center gap-3">
-          <div className="h-px flex-1 bg-[color:var(--line)]" />
-          <span className="text-[10px] font-medium uppercase tracking-wider text-[color:var(--mut)]">
-            {locale === "am" ? "ወይም" : "or"}
-          </span>
-          <div className="h-px flex-1 bg-[color:var(--line)]" />
-        </div>
-
-        {/* Language switcher */}
-        <div className="flex items-center justify-center gap-2 text-sm">
+        <div className="mt-6 flex items-center justify-center gap-2 text-sm">
           <span className="text-[color:var(--mut)]">
             {locale === "am" ? "ቋንቋ" : "Language"}:
           </span>
@@ -197,7 +163,6 @@ export function LoginForm({
         </div>
       </div>
 
-      {/* Footer */}
       <p className="mt-6 text-center text-xs text-[color:var(--mut)]">
         {locale === "am"
           ? "ችግር ካለ የቢሮ አስተዳዳሪዎን ያነጋግሩ።"
@@ -206,8 +171,6 @@ export function LoginForm({
     </div>
   );
 }
-
-/* ------------------------------------------------------------------ */
 
 function SubmitButton({ label }: { label: string }) {
   const { pending } = useFormStatus();

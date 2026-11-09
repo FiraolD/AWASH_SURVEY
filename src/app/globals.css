@@ -59,7 +59,16 @@ body {
   font-feature-settings: "kern", "cv11";
 }
 
-input, button, select, textarea { font: inherit; }
+/* Update the input styles in globals.css */
+input, button, select, textarea {
+  font-family: inherit;
+  font-feature-settings: "kern", "cv11";
+}
+
+/* Optional: Add a specific rule to ensure the Ethiopic font is prioritized */
+textarea, input[type="text"], input[type="email"] {
+  font-family: var(--font-ethiopic), sans-serif;
+}
 
 /* Focus ring – consistent across buttons, inputs, links */
 button:focus-visible,

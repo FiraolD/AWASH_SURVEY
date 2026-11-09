@@ -7,12 +7,14 @@ export function PrintSheet({
   locale,
   messages,
   report,
+  branchName, // <-- Added branchName
   items,
   finalizedByName,
 }: {
   locale: string;
   messages: Messages;
   report: SurveyReport;
+  branchName?: string | null; // <-- Added type
   items: ReportItem[];
   finalizedByName?: string | null;
 }) {
@@ -84,7 +86,8 @@ export function PrintSheet({
               </div>
               <div className="flex flex-col gap-[1mm]">
                 <PrintField label="ቀን" value={report.reportDate} />
-                <PrintField label="ቅርንጫፍ" value={String(report.branchId)} />
+                {/* FIX: Use branchName here */}
+                <PrintField label="ቅርንጫፍ" value={branchName || String(report.branchId)} />
                 <PrintField label="የሞተር ቁጥር" value={report.engineNo} />
                 <PrintField label="የሻንሲ ቁጥር" value={report.chassisNo} />
                 <PrintField label="ሞዴል" value={report.model} />
@@ -121,24 +124,25 @@ export function PrintSheet({
                       <td className="border-[.3mm] border-black text-center text-[8pt]">
                         {a ? i + 1 : ""}
                       </td>
-                      <td className="border-[.3mm] border-black">
+                      <td className="border-[.3mm] border-black align-top">
                         {a && (
-                          <div className="px-[1.5mm] leading-tight">
-                            <div className="flex items-baseline gap-1.5">
+                          <div className="px-[1.5mm] leading-tight break-words whitespace-pre-wrap">
+                            <div className="flex flex-wrap items-baseline gap-1.5">
                               <span className="text-[10pt] font-semibold">
                                 {a.names.am}
                               </span>
-                              <span className="text-[8.5pt] text-gray-600">
+                              {/* FIX: Made English bold and black */}
+                              <span className="text-[8.5pt] font-bold text-black">
                                 / {a.names.en}
                               </span>
                             </div>
                             {a.remark && (
-                              <div className="text-[6.5pt] italic text-gray-600 mt-[1px]">
+                              <div className="text-[7pt] text-black mt-[1px] break-words">
                                 {a.remark}
                               </div>
                             )}
                             {aMeta && (
-                              <div className="text-[6pt] font-semibold tracking-wide text-gray-500">
+                              <div className="text-[6pt] font-semibold tracking-wide text-gray-700">
                                 {aMeta}
                               </div>
                             )}
@@ -148,24 +152,25 @@ export function PrintSheet({
                       <td className="border-[.3mm] border-black text-center text-[8pt]">
                         {b ? i + 1 : ""}
                       </td>
-                      <td className="border-[.3mm] border-black">
+                      <td className="border-[.3mm] border-black align-top">
                         {b && (
-                          <div className="px-[1.5mm] leading-tight">
-                            <div className="flex items-baseline gap-1.5">
+                          <div className="px-[1.5mm] leading-tight break-words whitespace-pre-wrap">
+                            <div className="flex flex-wrap items-baseline gap-1.5">
                               <span className="text-[10pt] font-semibold">
                                 {b.names.am}
                               </span>
-                              <span className="text-[8.5pt] text-gray-600">
+                              {/* FIX: Made English bold and black */}
+                              <span className="text-[8.5pt] font-bold text-black">
                                 / {b.names.en}
                               </span>
                             </div>
                             {b.remark && (
-                              <div className="text-[6.5pt] italic text-gray-600 mt-[1px]">
+                              <div className="text-[7pt] text-black mt-[1px] break-words">
                                 {b.remark}
                               </div>
                             )}
                             {bMeta && (
-                              <div className="text-[6pt] font-semibold tracking-wide text-gray-500">
+                              <div className="text-[6pt] font-semibold tracking-wide text-gray-700">
                                 {bMeta}
                               </div>
                             )}

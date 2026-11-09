@@ -1,10 +1,21 @@
-import { Noto_Sans_Ethiopic } from "next/font/google";
+import localFont from "next/font/local";
 import { ToastHost } from "@/components/ui/Toast";
+import { Providers } from "./providers";
 import "./globals.css";
 
-const ethiopic = Noto_Sans_Ethiopic({
-  subsets: ["ethiopic"],
-  weight: ["400", "600", "700"],
+const ethiopic = localFont({
+  src: [
+    {
+      path: "../../public/fonts/NotoSansEthiopic-Regular.ttf",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "../../public/fonts/NotoSansEthiopic-Bold.ttf",
+      weight: "700",
+      style: "normal",
+    },
+  ],
   variable: "--font-ethiopic",
 });
 
@@ -15,9 +26,11 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="am">
+    <html lang="am" suppressHydrationWarning>
       <body className={`${ethiopic.variable} font-ethiopic`}>
-        {children}
+        <Providers>
+          {children}
+        </Providers>
         <ToastHost />
       </body>
     </html>

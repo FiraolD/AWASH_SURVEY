@@ -95,7 +95,7 @@ export function PartConditionModal({
         </>
       }
     >
-      <p className="mb-4 text-sm font-semibold text-[color:var(--ink)]">
+      <p className="mb-4 text-sm font-semibold text-[color:var(--ink)] font-ethiopic">
         {partName}
       </p>
 
@@ -199,14 +199,16 @@ export function PartConditionModal({
             ({tr("አማራጭ", "optional")})
           </span>
         </div>
-        <textarea
-          value={remark}
-          onChange={(e) => setRemark(e.target.value)}
-          rows={2}
-          maxLength={500}
-          placeholder={tr("ለምሳሌ፡ በግራ በኩል የተሰበረ...", "e.g. Scratched on left side...")}
-          className="w-full resize-none rounded-[var(--r)] border border-[color:var(--line-2)] bg-white p-2 text-sm placeholder:text-[color:var(--mut)] focus:border-[color:var(--acc)] focus:outline-none focus:ring-2 focus:ring-[color:var(--acc-ring)]"
-        />
+      // Inside PartConditionModal.tsx
+<textarea
+  value={remark}
+  onChange={(e) => setRemark(e.target.value)}
+  rows={2}
+  maxLength={500}
+  placeholder={tr("ለምሳሌ፡ በግራ በኩል የተሰበረ (በአማርኛ መጻፍ ይችላሉ)...", "e.g. Scratched on left side...")}
+  // ENSURE font-ethiopic is in the className
+  className="w-full resize-none rounded-[var(--r)] border border-[color:var(--line-2)] bg-white p-2 text-sm font-ethiopic placeholder:text-[color:var(--mut)] focus:border-[color:var(--acc)] focus:outline-none focus:ring-2 focus:ring-[color:var(--acc-ring)]"
+/>
       </div>
     </Modal>
   );

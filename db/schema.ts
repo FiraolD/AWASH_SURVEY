@@ -1,8 +1,10 @@
 import {
-    pgTable, pgEnum, uuid, text, integer, smallint, boolean, jsonb,
-    timestamp, date, primaryKey, uniqueIndex, index, bigint,
+    pgTable, pgEnum, varchar, uuid, text, integer, smallint, boolean, jsonb,
+    timestamp, date, primaryKey, uniqueIndex, unique, index, bigint,
   } from "drizzle-orm/pg-core";
-  import { sql } from "drizzle-orm";
+  import { sql, InferSelectModel } from "drizzle-orm";
+
+
   
   export const userRole     = pgEnum("user_role",     ["admin", "supervisor", "surveyor"]);
   export const coverageType = pgEnum("coverage_type", ["comprehensive", "third_party"]);
@@ -36,20 +38,21 @@ export const itemOrigin    = pgEnum("item_origin",    ["genuine", "local"]);
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   });
   
-  export const users = pgTable("users", {
-    id:            uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-    email:         text("email").notNull().unique(),
-    fullName:      text("full_name").notNull(),
-    phone:         text("phone"),
-    role:          userRole("role").notNull().default("surveyor"),
-    branchId:      integer("branch_id").references(() => branches.id),
-    passwordHash:  text("password_hash"),
-    preferredLang: text("preferred_lang").notNull().default("en").references(() => languages.code),
-    isActive:      boolean("is_active").notNull().default(true),
-    lastLoginAt:   timestamp("last_login_at", { withTimezone: true }),
-    createdAt:     timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt:     timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  }, (t) => ({ branchIdx: index("users_branch_idx").on(t.branchId) }));
+export const users = pgTable("users", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  username: varchar("username", { length: 50 }).notNull().unique(), // <-- NEW
+  email: varchar("email", { length: 255 }).notNull().unique(),
+  passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+  fullName: varchar("full_name", { length: 100 }).notNull(),
+  phone: varchar("phone", { length: 20 }),
+  role: varchar("role", { length: 20 }).notNull().default("surveyor"),
+  branchId: integer("branch_id").references(() => branches.id),
+  preferredLang: varchar("preferred_lang", { length: 10 }).notNull().default("am"),
+  isActive: boolean("is_active").notNull().default(true),
+  mustChangePassword: boolean("must_change_password").notNull().default(false), // <-- NEW
+  lastLoginAt: timestamp("last_login_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
   
   export const partTranslations = pgTable("part_translations", {
     id:       bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
@@ -59,6 +62,7 @@ export const itemOrigin    = pgEnum("item_origin",    ["genuine", "local"]);
     nameNorm: text("name_norm").generatedAlwaysAs(sql`fold_text(name)`),
   }, (t) => ({
     partLangUq: uniqueIndex("part_translations_part_id_lang_key").on(t.partId, t.lang),
+    unq: unique("part_translations_part_id_lang_key").on(t.partId, t.lang),
     langIdx:    index("part_translations_lang_idx").on(t.lang),
   }));
   
@@ -147,3 +151,8 @@ export const itemOrigin    = pgEnum("item_origin",    ["genuine", "local"]);
   }));
   
   export type AuditEntry = typeof auditLog.$inferSelect;
+
+  export type ReportItem = InferSelectModel<typeof reportItems>;
+export type SurveyReport = InferSelectModel<typeof surveyReports>;
+// Add this to the bottom of db/schema.ts
+export type User = InferSelectModel<typeof users>;

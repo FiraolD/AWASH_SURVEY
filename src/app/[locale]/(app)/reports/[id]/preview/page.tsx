@@ -22,7 +22,13 @@ export default async function PreviewPage({
           ⬇ {messages.app.print}
         </a>
       </div>
-      <PrintSheet locale={locale} messages={messages} report={data.report} items={data.items} />
+      <PrintSheet 
+        locale={locale} 
+        messages={messages} 
+        report={data.report} 
+        branchName={data.branchName} // <-- Added this
+        items={data.items} 
+      />
     </div>
   );
 }

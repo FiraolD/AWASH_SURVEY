@@ -10,6 +10,8 @@ import { db } from "~db/index";
 import { auditLog } from "~db/schema";
 import { requireRole } from "@/server/permissions";
 import { env } from "@/lib/env";
+import { readdir } from "fs/promises";
+//import { join } from "path";
 
 /* ------------------------------------------------------------------ */
 /* Connection: one-shot pool, never reused between requests            */
@@ -218,6 +220,31 @@ export async function listMigrationStatus(): Promise<MigrationFile[]> {
     applied: applied.has(name),
     appliedAt: applied.get(name) ?? null,
   }));
+}
+
+export type MigrationFile = {
+  name: string;
+  applied: boolean;
+  appliedAt: string | null;
+};
+
+export async function listMigrations(): Promise<MigrationFile[]> {
+  try {
+    const dir = join(process.cwd(), "db/migrations");
+    const files = await readdir(dir);
+    
+    // Filter and sort .sql files
+    const sqlFiles = files.filter((f) => f.endsWith(".sql")).sort();
+    
+    return sqlFiles.map((name) => ({
+      name,
+      applied: false, // Since we don't track applied status here, we default to false
+      appliedAt: null,
+    }));
+  } catch (error) {
+    console.error("Failed to read migrations folder", error);
+    return [];
+  }
 }
 
 export async function runPendingMigration(name: string) {

@@ -10,20 +10,20 @@ export function AppNav({
   canSeeParts,
   canSeeUsers,
   canSeeAudit,
-  canSeeSql,
+  //canSeeSql,
   labels,
 }: {
   locale: string;
   canSeeParts: boolean;
   canSeeUsers: boolean;
   canSeeAudit: boolean;
-  canSeeSql: boolean;
+  //canSeeSql: boolean;
   labels: {
     reports: string;
     parts: string;
     users?: string;
     audit?: string;
-    sql?: string;
+    //sql?: string;
   };
 }) {
   const pathname = usePathname();
@@ -76,20 +76,6 @@ export function AppNav({
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
           <path d="M14 2v6h6M8 13h8M8 17h5" />
-        </svg>
-      ),
-    });
-  }
-
-  if (canSeeSql && labels.sql) {
-    items.push({
-      href: `/${locale}/admin/sql`,
-      label: labels.sql,
-      icon: (
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <ellipse cx="12" cy="5" rx="9" ry="3" />
-          <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
-          <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
         </svg>
       ),
     });

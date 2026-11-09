@@ -4,12 +4,11 @@ const nextConfig = {
   // Basics
   // ---------------------------------------------------------------
   reactStrictMode: true,
-  output: "standalone",
   poweredByHeader: false,
   compress: true,
 
   // ---------------------------------------------------------------
-  // Experiments
+  // Experiments (Windows Stability)
   // ---------------------------------------------------------------
   experimental: {
     serverActions: { bodySizeLimit: "4mb" },
@@ -23,16 +22,17 @@ const nextConfig = {
   // ---------------------------------------------------------------
   // Packages that must not be bundled by webpack
   // ---------------------------------------------------------------
-  serverExternalPackages: ["@react-pdf/renderer", "bcryptjs"],
+  // Keeps pdfkit and @react-pdf/renderer external so Next.js doesn't 
+  // break their internal file paths (fixes the Helvetica font crash).
+  serverExternalPackages: ["@react-pdf/renderer", "pdfkit", "bcryptjs"],
 
   // ---------------------------------------------------------------
-  // Images — nothing uses next/image, so keep sharp out of the build
+  // Images
   // ---------------------------------------------------------------
   images: { unoptimized: true },
 
   // ---------------------------------------------------------------
   // Dev-only: allow LAN machines to load /_next/* assets.
-  // Ignored in production builds.
   // ---------------------------------------------------------------
   allowedDevOrigins: ["10.1.12.21", "localhost", "127.0.0.1"],
 
@@ -53,7 +53,6 @@ const nextConfig = {
     const isProd = process.env.NODE_ENV === "production";
 
     return [
-      // Security headers for every route
       {
         source: "/:path*",
         headers: [
@@ -75,13 +74,11 @@ const nextConfig = {
         ],
       },
 
-      // Never cache API responses — auth, health, search, PDF, etc.
       {
         source: "/api/:path*",
         headers: [{ key: "Cache-Control", value: "no-store, max-age=0" }],
       },
 
-      // Immutable assets — content-hashed, safe to cache forever
       {
         source: "/_next/static/:path*",
         headers: [
@@ -92,12 +89,7 @@ const nextConfig = {
         ],
       },
 
-      // Next.js runtime files (chunks, manifests) — ALWAYS revalidate.
-      // This is what fixes the "Failed to find Server Action" error:
-      // after a rebuild, action IDs change, and browsers holding the
-      // old chunk will 404 forever if they cache it. no-cache forces
-      // revalidation on every request while still allowing a cached
-      // 304 response if the file is unchanged.
+  
       {
         source: "/_next/:path*",
         headers: [{ key: "Cache-Control", value: "no-cache" }],

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog, Modal } from "@/components/ui/Modal";
@@ -27,15 +27,15 @@ export function AdminPartsTable({
   const sp = useSearchParams();
   const [pending, start] = useTransition();
 
-  const [q, setQ] = useState(sp.get("q") ?? "");
-  const [active, setActive] = useState(sp.get("active") ?? "all");
+  const [q, setQ] = useState(sp?.get("q") ?? "");
+  const [active, setActive] = useState(sp?.get("active") ?? "all");
 
   const [editing, setEditing] = useState<Row | null>(null);
   const [creating, setCreating] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Row | null>(null);
 
   const submitFilters = () => {
-    const next = new URLSearchParams(sp.toString());
+    const next = new URLSearchParams(sp?.toString() || "");
     if (q) next.set("q", q); else next.delete("q");
     if (active && active !== "all") next.set("active", active); else next.delete("active");
     next.set("page", "1");
@@ -218,12 +218,14 @@ function PartFormModal({
   const [isActive, setIsActive] = useState(initial?.isActive ?? true);
   const [saving, setSaving] = useState(false);
 
-  // Reset when the modal reopens with a different row
-  useMemo(() => {
-    setEn(initial?.en ?? "");
-    setAm(initial?.am ?? "");
-    setCode(initial?.code ?? "");
-    setIsActive(initial?.isActive ?? true);
+  // FIX: Changed from useMemo to useEffect
+  useEffect(() => {
+    if (open) {
+      setEn(initial?.en ?? "");
+      setAm(initial?.am ?? "");
+      setCode(initial?.code ?? "");
+      setIsActive(initial?.isActive ?? true);
+    }
   }, [initial, open]);
 
   const submit = async () => {

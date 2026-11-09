@@ -1,47 +1,61 @@
-import { NextResponse, type NextRequest } from "next/server";
-import { isLocale } from "@/lib/zod";
+import NextAuth from "next-auth";
+import { authConfig } from "@/server/auth.config";
+import { NextResponse } from "next/server";
+import { locales, isLocale } from "@/lib/i18n";
+import { env } from "@/lib/env";
 
-const PUBLIC_PATHS = ["/login"];
-const DEFAULT_LOCALE = "am";
+const DEFAULT_LOCALE = env.DEFAULT_LOCALE ?? "am";
+const PUBLIC_FILE = /\.(.*)$/;
 
-export function middleware(req: NextRequest) {
-  const { pathname, search } = req.nextUrl;
+// Initialize NextAuth with the Edge-safe config
+const { auth } = NextAuth(authConfig);
+
+export default auth((req) => {
+  const { nextUrl } = req;
+  const isLoggedIn = !!req.auth;
+  
+  const pathname = nextUrl.pathname;
+  const search = nextUrl.search;
   const segs = pathname.split("/").filter(Boolean);
+  
+  const rawLocale = segs[0];
+  const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE;
 
-  // 1. No locale prefix → redirect to /<locale><path>
-  if (segs.length === 0 || !isLocale(segs[0])) {
-    const cookie = req.cookies.get("locale")?.value;
-    const locale = isLocale(cookie) ? cookie : DEFAULT_LOCALE;
-    const rest = pathname === "/" ? "" : pathname;
-    return NextResponse.redirect(new URL(`/${locale}${rest}${search}`, req.url));
+  const isApiRoute = pathname.startsWith("/api");
+  const isPublicFile = PUBLIC_FILE.test(pathname) || pathname.includes("/favicon.ico");
+  const isLoginRoute = pathname === `/${locale}/login` || pathname === "/login";
+  const isChangePasswordRoute = pathname.includes("/change-password");
+
+    if (pathname.startsWith("/console")) {
+    return NextResponse.next();
   }
 
-  // 2. Under /<locale>, gate non-public routes
-  const locale = segs[0];
-  const rest = "/" + segs.slice(1).join("/");
-  const isPublic = PUBLIC_PATHS.some(
-    (p) => rest === p || rest.startsWith(p + "/"),
-  );
+  if (isApiRoute || isPublicFile) {
+    return NextResponse.next();
+  }
 
-  if (!isPublic) {
-    const hasSession = Boolean(
-      req.cookies.get("authjs.session-token")?.value ||
-        req.cookies.get("__Secure-authjs.session-token")?.value ||
-        req.cookies.get("__Host-authjs.session-token")?.value
-    );
-    if (!hasSession) {
-      const url = new URL(`/${locale}/login`, req.url);
-      url.searchParams.set("next", pathname);
-      return NextResponse.redirect(url);
-    }
+  if (segs.length === 0 || !isLocale(segs[0])) {
+    const cookie = req.cookies.get("locale")?.value;
+    const redirectLocale = cookie && isLocale(cookie) ? cookie : DEFAULT_LOCALE;
+    const rest = pathname === "/" ? "" : pathname;
+    return NextResponse.redirect(new URL(`/${redirectLocale}${rest}${search}`, req.url));
+  }
+
+  if (!isLoggedIn && !isLoginRoute) {
+    return NextResponse.redirect(new URL(`/${locale}/login`, nextUrl));
+  }
+
+  if (isLoggedIn && req.auth?.user?.mustChangePassword && !isChangePasswordRoute) {
+    return NextResponse.redirect(new URL(`/${locale}/change-password`, nextUrl));
+  }
+
+  if (isLoggedIn && !req.auth?.user?.mustChangePassword && isChangePasswordRoute) {
+    return NextResponse.redirect(new URL(`/${locale}/reports`, nextUrl));
   }
 
   return NextResponse.next();
-}
+});
 
-// Match every path except Next internals, API routes, and ANY file with an extension (like .png, .jpg, .ico)
 export const config = {
-  matcher: [
-    "/((?!api|_next/static|_next/image|_next/webpack-hmr|favicon.ico|.*\\..*).*)",
-  ],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 };

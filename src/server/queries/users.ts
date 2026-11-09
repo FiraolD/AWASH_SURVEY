@@ -3,11 +3,6 @@ import { asc, eq, sql } from "drizzle-orm";
 import { db } from "~db/index";
 import { branches, users } from "~db/schema";
 
-/**
- * Kept for callers that still want a simple list (e.g. the old
- * admin/users page before pagination). New code should use
- * listUsersPaged().
- */
 export async function listUsers() {
   return db
     .select({
@@ -24,6 +19,7 @@ export async function listUsers() {
 
 export type UserRow = {
   id: string;
+  username: string; // <-- ADDED
   email: string;
   fullName: string;
   phone: string | null;
@@ -55,6 +51,7 @@ export async function listUsersPaged(opts: {
     const like = `%${opts.q.toLowerCase()}%`;
     conds.push(sql`(
       lower(u.full_name) like ${like}
+      or lower(u.username) like ${like}
       or lower(u.email) like ${like}
       or coalesce(lower(u.phone), '') like ${like}
     )`);
@@ -70,6 +67,7 @@ export async function listUsersPaged(opts: {
 
   const rows = await db.execute<{
     id: string;
+    username: string; // <-- ADDED
     email: string;
     full_name: string;
     phone: string | null;
@@ -83,7 +81,7 @@ export async function listUsersPaged(opts: {
     created_at: string;
   }>(sql`
     select
-      u.id, u.email, u.full_name, u.phone, u.role,
+      u.id, u.username, u.email, u.full_name, u.phone, u.role,
       u.branch_id, u.preferred_lang, u.is_active,
       u.last_login_at, u.created_at,
       b.code as branch_code,
@@ -104,6 +102,7 @@ export async function listUsersPaged(opts: {
   return {
     rows: rows.rows.map((r) => ({
       id: r.id,
+      username: r.username, // <-- ADDED
       email: r.email,
       fullName: r.full_name,
       phone: r.phone,
