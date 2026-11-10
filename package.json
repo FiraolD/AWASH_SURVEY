@@ -4,9 +4,9 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "dev": "node --max-old-space-size=4096 node_modules/next/dist/bin/next dev -p 3090",
+        "dev": "node --max-old-space-size=4096 node_modules/next/dist/bin/next dev -p 3099",
         "build": "node --max-old-space-size=4096 node_modules/next/dist/bin/next build",
-        "start": "node --max-old-space-size=4096 node_modules/next/dist/bin/next start -p 3090",
+        "start": "node --max-old-space-size=4096 node_modules/next/dist/bin/next start -p 3099",
         "db:generate": "drizzle-kit generate",
         "db:migrate": "tsx db/migrate.ts",
         "db:seed": "tsx db/seed/seed.ts",

@@ -139,7 +139,7 @@ AUTH_SECRET=your-super-long-random-secret-key-here
 
 # Optional: Set this if accessing via a fixed LAN IP. 
 # Leave blank to let Auth.js dynamically use the incoming Host header.
-# AUTH_URL=http://10.1.12.21:3090
+# AUTH_URL=http://10.1.12.21:3099
 
 # Enable the Admin SQL Console (Set to 'false' or remove in production)
 ALLOW_SQL_CONSOLE=true
@@ -178,7 +178,7 @@ bash
 
 npm run dev
 
-Open http://localhost:3090 in your browser.
+Open http://localhost:3099 in your browser.
 Default Admin Login: admin@awash.example / changeme
 🔐 Roles & Permissions
 
