@@ -6,8 +6,8 @@ export default function ReportNotFound() {
           It may have been deleted, or the link is out of date.
         </p>
         <a
-          href="/am/reports"
-          className="mt-5 inline-block rounded-md bg-teal-700 px-4 py-2 text-sm text-white hover:bg-teal-800"
+          href="/reports"
+          className="mt-5 inline-block rounded-md bg-[color:var(--acc)] px-4 py-2 text-sm text-white hover:bg-[color:var(--acc-h)]"
         >
           Back to reports
         </a>

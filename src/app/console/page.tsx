@@ -1,4 +1,4 @@
-import { cookies } from "next/headers";
+import { isConsoleAuthed } from "@/server/console-auth";
 import { ConsoleLogin } from "./ConsoleLogin";
 import { SqlConsole } from "@/components/SqlConsole";
 import { listMigrations } from "@/server/actions/sql";
@@ -10,8 +10,7 @@ export const metadata = {
 };
 
 export default async function ConsolePage() {
-  const cookieStore = await cookies();
-  const isAuth = cookieStore.get("console_auth")?.value === "true";
+  const isAuth = await isConsoleAuthed();
 
   if (!isAuth) {
     return <ConsoleLogin />;

@@ -18,12 +18,12 @@ const VARIANTS: Record<Variant, string> = {
   "outline-danger":
     "border border-[#fecaca] text-[color:var(--rep)] hover:bg-[color:var(--rep-2)]",
   icon:
-    "text-[color:var(--mut)] hover:bg-[color:var(--bg)] hover:text-ink p-1.5 rounded-md",
+    "text-[color:var(--mut)] hover:bg-[color:var(--bg)] hover:text-ink p-1.5 max-md:p-2.5 rounded-md",
 };
 
 const SIZES: Record<Size, string> = {
-  xs: "h-7 px-2 text-xs gap-1",
-  sm: "h-8 px-3 text-sm gap-1.5",
+  xs: "h-7 px-2 text-xs gap-1 max-md:h-9 max-md:px-3",
+  sm: "h-8 px-3 text-sm gap-1.5 max-md:h-9",
   md: "h-9 px-3.5 text-sm gap-2",
   lg: "h-11 px-5 text-base gap-2",
 };
@@ -43,6 +43,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     <button
       ref={ref}
       disabled={disabled || loading}
+      aria-label={variant === "icon" ? rest.title : undefined}
+      aria-busy={loading || undefined}
       className={[
         "inline-flex items-center justify-center rounded-[var(--r)] font-medium",
         "disabled:cursor-not-allowed whitespace-nowrap select-none",

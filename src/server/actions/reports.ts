@@ -16,7 +16,7 @@ export async function createDraftReport(userId: string, branchId: number) {
       const [u] = await tx
         .select({ id: users.id, branchId: users.branchId })
         .from(users)
-        .where(eq(users.id, userId))
+        .where(eq(users.id, user.id)) // always the signed-in user, never a client-supplied id
         .limit(1);
 
       if (!u) {
@@ -101,6 +101,7 @@ export async function finalizeReport(reportId: string) {
 
       if (!r) throw new Error("Not found");
       if (r.status !== "draft") throw new Error("Report is not draft");
+      if (user.role === "surveyor" && r.surveyorId !== user.id) throw new Error("Forbidden");
 
       // The PL/pgSQL function inherits app.user_id from this transaction,
       // so every write it performs (report status, parts.usage_count)

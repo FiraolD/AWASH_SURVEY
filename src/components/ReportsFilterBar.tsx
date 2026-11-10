@@ -6,14 +6,19 @@ import { Input, Select } from "@/components/ui/Input";
 import type { Messages } from "@/lib/i18n";
 
 export function ReportsFilterBar({
-  branches, messages,
+  branches,
+  messages,
+  locale,
 }: {
   branches: { id: number; code: string; names: Record<string, string> }[];
   messages: Messages;
+  locale?: string;
 }) {
   const router = useRouter();
   const path = usePathname();
   const sp = useSearchParams();
+  const lang = locale ?? path.split("/")[1] ?? "en";
+  const tr = (am: string, en: string) => (lang === "am" ? am : en);
 
   const [v, setV] = useState({
     plate: sp?.get("plate") ?? "",
@@ -40,7 +45,7 @@ export function ReportsFilterBar({
 
   return (
     <div className="rounded-[var(--r-lg)] border border-[color:var(--line)] bg-white p-3 shadow-[var(--shadow-sm)]">
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
         <Input
           placeholder={messages.reports.plate}
           value={v.plate}
@@ -53,31 +58,53 @@ export function ReportsFilterBar({
           onChange={(e) => setV({ ...v, chassis: e.target.value })}
           onKeyDown={(e) => e.key === "Enter" && apply()}
         />
-        
-        {/* Highlighted Status Dropdown */}
-        <Select 
-          value={v.status} 
+
+        <Select
+          value={v.status}
           onChange={(e) => setV({ ...v, status: e.target.value })}
           className="font-medium"
+          aria-label={messages.reports.status}
         >
-          <option value="">All Statuses</option>
-          <option value="finalized">✅ Finalized</option>
-          <option value="draft">📝 Draft</option>
-          <option value="void">❌ Void</option>
+          <option value="">{tr("ሁሉም ሁኔታዎች", "All statuses")}</option>
+          <option value="finalized">{tr("የተጠናቀቀ", "Finalized")}</option>
+          <option value="draft">{tr("ረቂቅ", "Draft")}</option>
+          <option value="void">{tr("የተሰረዘ", "Void")}</option>
         </Select>
 
-        <Select value={v.branch} onChange={(e) => setV({ ...v, branch: e.target.value })}>
-          <option value="">All branches</option>
+        <Select
+          value={v.branch}
+          onChange={(e) => setV({ ...v, branch: e.target.value })}
+          aria-label={tr("ቅርንጫፍ", "Branch")}
+        >
+          <option value="">{tr("ሁሉም ቅርንጫፎች", "All branches")}</option>
           {branches?.map((b) => (
-            <option key={b.id} value={b.id}>{b.names?.en ?? b.code}</option>
+            <option key={b.id} value={b.id}>
+              {b.names?.[lang] ?? b.names?.en ?? b.code}
+            </option>
           ))}
         </Select>
-        <Input type="date" value={v.from} onChange={(e) => setV({ ...v, from: e.target.value })} title="From Date" />
-        <Input type="date" value={v.to} onChange={(e) => setV({ ...v, to: e.target.value })} title="To Date" />
+        <Input
+          type="date"
+          value={v.from}
+          onChange={(e) => setV({ ...v, from: e.target.value })}
+          title={tr("ከቀን", "From date")}
+          aria-label={tr("ከቀን", "From date")}
+        />
+        <Input
+          type="date"
+          value={v.to}
+          onChange={(e) => setV({ ...v, to: e.target.value })}
+          title={tr("እስከ ቀን", "To date")}
+          aria-label={tr("እስከ ቀን", "To date")}
+        />
       </div>
       <div className="mt-3 flex justify-end gap-2">
-        <Button variant="ghost" size="sm" onClick={clear}>Clear Filters</Button>
-        <Button variant="primary" size="sm" onClick={apply}>Search</Button>
+        <Button variant="ghost" size="sm" onClick={clear}>
+          {tr("አጽዳ", "Clear filters")}
+        </Button>
+        <Button variant="primary" size="sm" onClick={apply}>
+          {tr("ፈልግ", "Search")}
+        </Button>
       </div>
     </div>
   );

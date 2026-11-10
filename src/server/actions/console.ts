@@ -2,22 +2,40 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import {
+  CONSOLE_COOKIE,
+  CONSOLE_PATH,
+  checkRateLimit,
+  clearRateLimit,
+  clientKey,
+  createConsoleToken,
+  requestIsHttps,
+  safeEqual,
+} from "@/server/console-auth";
 
 export async function loginConsole(formData: FormData) {
-  const password = formData.get("password") as string;
-  const expectedPassword = process.env.CONSOLE_PASSWORD;
+  const password = String(formData.get("password") ?? "");
+  const expected = process.env.CONSOLE_PASSWORD;
 
-  if (!expectedPassword) {
-    throw new Error("CONSOLE_PASSWORD is not set in environment variables.");
+  if (!expected) {
+    return { error: "CONSOLE_PASSWORD is not configured on the server." };
   }
 
-  if (password === expectedPassword) {
+  const key = await clientKey();
+  const limit = checkRateLimit(key);
+  if (!limit.ok) {
+    return { error: `Too many attempts. Try again in ${limit.retryAfterMin} minute(s).` };
+  }
+
+  if (safeEqual(password, expected)) {
+    clearRateLimit(key);
     const cookieStore = await cookies();
-    cookieStore.set("console_auth", "true", {
+    cookieStore.set(CONSOLE_COOKIE, createConsoleToken(), {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: 60 * 60 * 24, // 24 hours
+      sameSite: "strict",
+      secure: await requestIsHttps(),
+      path: CONSOLE_PATH,
+      maxAge: 60 * 60 * 8,
     });
     redirect("/console");
   }
@@ -27,6 +45,6 @@ export async function loginConsole(formData: FormData) {
 
 export async function logoutConsole() {
   const cookieStore = await cookies();
-  cookieStore.delete("console_auth");
+  cookieStore.delete({ name: CONSOLE_COOKIE, path: CONSOLE_PATH });
   redirect("/console");
 }

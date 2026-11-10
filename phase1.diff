@@ -1,0 +1,1612 @@
+--- a/src/app/[locale]/(app)/admin/audit/page.tsx
++++ b/src/app/[locale]/(app)/admin/audit/page.tsx
+@@ -2,7 +2,7 @@
+ import { listAuditEntries } from "@/server/queries/audit";
+ import { AuditLogTable } from "@/components/AuditLogTable";
+ import { Pagination } from "@/components/ui/Pagination";
+-import { getMessages, getLocale } from "@/lib/i18n";
++import { getMessages } from "@/lib/i18n";
+ 
+ export default async function AuditPage({
+   params,
+@@ -19,7 +19,7 @@
+   const { locale } = await params;
+   await requireRole("admin");
+   const sp = await searchParams;
+-  const messages = getMessages(await getLocale());
++  const messages = getMessages(locale);
+ 
+   const { rows, total, page, pageSize } = await listAuditEntries({
+     entity: sp.entity,
+
+--- /dev/null
++++ b/src/app/[locale]/(app)/loading.tsx
+@@ -0,0 +1,22 @@
++// Shown instantly while a page in the signed-in area loads (uses the .skeleton style from globals.css).
++export default function Loading() {
++  return (
++    <div className="space-y-5" aria-busy="true" aria-live="polite">
++      <div className="space-y-2">
++        <div className="skeleton h-7 w-56" />
++        <div className="skeleton h-4 w-72 max-w-full" />
++      </div>
++      <div className="skeleton h-24 w-full" style={{ borderRadius: "var(--r-lg)" }} />
++      <div className="overflow-hidden rounded-[var(--r-lg)] border border-[color:var(--line)] bg-white">
++        {Array.from({ length: 8 }).map((_, i) => (
++          <div key={i} className="flex items-center gap-4 border-b border-[color:var(--line)] px-4 py-3 last:border-0">
++            <div className="skeleton h-4 w-28" />
++            <div className="skeleton h-4 w-20" />
++            <div className="skeleton h-4 flex-1" />
++            <div className="skeleton h-4 w-16" />
++          </div>
++        ))}
++      </div>
++    </div>
++  );
++}
+
+--- a/src/app/[locale]/(app)/reports/[id]/error.tsx
++++ b/src/app/[locale]/(app)/reports/[id]/error.tsx
+@@ -1,4 +1,6 @@
+ "use client";
++
++import { usePathname } from "next/navigation";
+ 
+ export default function ReportError({
+   error,
+@@ -7,6 +9,7 @@
+   error: Error & { digest?: string };
+   reset: () => void;
+ }) {
++  const locale = usePathname()?.split("/")[1] === "en" ? "en" : "am";
+   return (
+     <div className="rounded-xl border border-red-200 bg-red-50 p-6">
+       <h2 className="text-base font-semibold text-red-900">
+@@ -24,7 +27,7 @@
+           Try again
+         </button>
+         <a
+-          href="/am/reports"
++          href={`/${locale}/reports`}
+           className="rounded-md px-3 py-1.5 text-sm text-red-700 hover:underline"
+         >
+           Back to reports
+
+--- a/src/app/[locale]/(app)/reports/[id]/not-found.tsx
++++ b/src/app/[locale]/(app)/reports/[id]/not-found.tsx
+@@ -6,8 +6,8 @@
+           It may have been deleted, or the link is out of date.
+         </p>
+         <a
+-          href="/am/reports"
+-          className="mt-5 inline-block rounded-md bg-teal-700 px-4 py-2 text-sm text-white hover:bg-teal-800"
++          href="/reports"
++          className="mt-5 inline-block rounded-md bg-[color:var(--acc)] px-4 py-2 text-sm text-white hover:bg-[color:var(--acc-h)]"
+         >
+           Back to reports
+         </a>
+
+--- a/src/app/[locale]/(app)/reports/[id]/page.tsx
++++ b/src/app/[locale]/(app)/reports/[id]/page.tsx
+@@ -19,6 +19,7 @@
+   ]);
+ 
+   if (!data) return notFound();
++  if (session.user.role === "surveyor" && data.report.surveyorId !== session.user.id) return notFound();
+ 
+   const messages = getMessages(locale as Locale);
+   const readonly = data.report.status !== "draft";
+@@ -28,7 +29,7 @@
+       <header className="flex flex-wrap items-end justify-between gap-4">
+         <div>
+           <h1 className="text-2xl font-semibold tracking-tight">
+-            {data.report.reportNo ?? "Draft Report"}
++            {data.report.reportNo ?? (locale === "am" ? "ረቂቅ ሪፖርት" : "Draft Report")}
+           </h1>
+           <p className="text-sm text-[color:var(--mut)]">
+             {data.branchName || "Awash Insurance"}
+
+--- a/src/app/[locale]/(app)/reports/[id]/preview/page.tsx
++++ b/src/app/[locale]/(app)/reports/[id]/preview/page.tsx
+@@ -1,5 +1,6 @@
+ import { notFound } from "next/navigation";
+ import { getReport } from "@/server/queries/reports";
++import { auth } from "@/server/auth";
+ import { getMessages } from "@/lib/i18n";
+ import { PrintSheet } from "@/components/PrintSheet";
+ 
+@@ -7,8 +8,11 @@
+   params,
+ }: { params: Promise<{ locale: string; id: string }> }) {
+   const { locale, id } = await params;
++  const session = await auth();
++  if (!session?.user) notFound();
+   const data = await getReport(id);
+   if (!data) notFound();
++  if (session.user.role === "surveyor" && data.report.surveyorId !== session.user.id) notFound();
+   const messages = getMessages(locale as any);
+ 
+   return (
+
+--- a/src/app/[locale]/(app)/reports/page.tsx
++++ b/src/app/[locale]/(app)/reports/page.tsx
+@@ -1,5 +1,6 @@
+ import Link from "next/link";
+-import { getLocale, getMessages } from "@/lib/i18n";
++import { getMessages } from "@/lib/i18n";
++import { formatDate } from "@/lib/format";
+ import { listReportsPaged } from "@/server/queries/reports";
+ import { listBranches } from "@/server/queries/branches";
+ import { auth } from "@/server/auth";
+@@ -16,40 +17,45 @@
+ }) {
+   const { locale } = await params;
+   const sp = await searchParams;
+-  const messages = getMessages(await getLocale());
++  const tr = (am: string, en: string) => (locale === "am" ? am : en);
++  const messages = getMessages(locale); // the URL's locale (getLocale() always returned "am")
+   const session = await auth();
+-  const branches = await listBranches();
+ 
+   // Safely extract the role and check if user is Admin or Supervisor
+   const role = session?.user?.role;
+   const showSurveyor = role === "admin" || role === "supervisor";
+-
+   const pageSize = sp.size ? Number(sp.size) : 10;
+ 
+-  const { rows, total, page } = await listReportsPaged({
+-    plate: sp.plate,
+-    chassis: sp.chassis,
+-    status: (sp.status as "draft" | "finalized" | "void" | undefined) || undefined,
+-    branchId: sp.branch ? Number(sp.branch) : undefined,
+-    dateFrom: sp.from,
+-    dateTo: sp.to,
+-    // Safely access session user id
+-    surveyorId: role === "surveyor" ? session?.user?.id : undefined,
+-    page: sp.page ? Number(sp.page) : 1,
+-    pageSize,
+-  });
++  // Branches and reports are independent: fetch them in parallel
++  const [branches, { rows, total, page }] = await Promise.all([
++    listBranches(),
++    listReportsPaged({
++      plate: sp.plate,
++      chassis: sp.chassis,
++      status: (sp.status as "draft" | "finalized" | "void" | undefined) || undefined,
++      branchId: sp.branch ? Number(sp.branch) : undefined,
++      dateFrom: sp.from,
++      dateTo: sp.to,
++      surveyorId: role === "surveyor" ? session?.user?.id : undefined,
++      page: sp.page ? Number(sp.page) : 1,
++      pageSize,
++    }),
++  ]);
+ 
+   const statusStyles: Record<string, string> = {
+     draft: "bg-[color:var(--warn-2)] text-[color:var(--warn)]",
+     finalized: "bg-[color:var(--success-2)] text-[color:var(--success)]",
+     void: "bg-[color:var(--bg)] text-[color:var(--mut)]",
+   };
+-
++  const statusLabel: Record<string, string> = {
++    draft: tr("ረቂቅ", "Draft"),
++    finalized: tr("የተጠናቀቀ", "Finalized"),
++    void: tr("የተሰረዘ", "Void"),
++  };
+   const coverageLabel: Record<string, string> = {
+-    comprehensive: "ሙሉ · Full",
+-    third_party: "ሦስተኛ · 3rd",
++    comprehensive: tr("ሙሉ", "Full"),
++    third_party: tr("ሦስተኛ ወገን", "3rd party"),
+   };
+-
+   const coverageStyles: Record<string, string> = {
+     comprehensive: "bg-[color:var(--acc-2)] text-[color:var(--acc)] border-[#b3d4f0]",
+     third_party: "bg-[color:var(--warn-2)] text-[color:var(--warn)] border-[#fde68a]",
+@@ -62,13 +68,17 @@
+       <header className="flex flex-wrap items-end justify-between gap-4">
+         <div>
+           <h1 className="text-2xl font-semibold tracking-tight">
+-            {isSearching ? "Search Results" : "Recent Reports"}
++            {isSearching ? tr("የፍለጋ ውጤቶች", "Search results") : tr("የቅርብ ጊዜ ሪፖርቶች", "Recent reports")}
+           </h1>
+           <p className="text-sm text-[color:var(--mut)]">
+-            Showing {rows.length} of {total.toLocaleString()} total reports
++            {tr(
++              `ከ${total.toLocaleString()} ሪፖርቶች ${rows.length} እየታዩ ነው`,
++              `Showing ${rows.length} of ${total.toLocaleString()} reports`,
++            )}
+           </p>
+         </div>
+-        <Link href={`/${locale}/reports/new`}>
++        {/* prefetch off: /reports/new creates a draft when it is opened */}
++        <Link href={`/${locale}/reports/new`} prefetch={false}>
+           <Button
+             variant="primary"
+             icon={
+@@ -82,21 +92,20 @@
+         </Link>
+       </header>
+ 
+-      <ReportsFilterBar branches={branches} messages={messages} />
++      <ReportsFilterBar branches={branches} messages={messages} locale={locale} />
+ 
+-      <div className="overflow-hidden rounded-[var(--r-lg)] border border-[color:var(--line)] bg-white shadow-[var(--shadow-sm)]">
++      <div className="overflow-x-auto rounded-[var(--r-lg)] border border-[color:var(--line)] bg-white shadow-[var(--shadow-sm)]">
+         <table className="w-full text-sm">
+           <thead className="bg-[color:var(--bg)] text-left text-xs uppercase tracking-wide text-[color:var(--mut)]">
+             <tr>
+-              <th className="px-4 py-3">Report no.</th>
+-              <th className="px-4 py-3">Date</th>
+-              <th className="px-4 py-3">Plate</th>
+-              <th className="hidden px-4 py-3 md:table-cell">Chassis</th>
+-              <th className="hidden px-4 py-3 md:table-cell">Coverage</th>
+-              <th className="hidden px-4 py-3 lg:table-cell">Branch</th>
+-              {/* Conditionally render Surveyor column */}
+-              {showSurveyor && <th className="hidden px-4 py-3 xl:table-cell">Surveyor</th>}
+-              <th className="px-4 py-3">Status</th>
++              <th className="px-4 py-3">{tr("የሪፖርት ቁጥር", "Report no.")}</th>
++              <th className="px-4 py-3">{tr("ቀን", "Date")}</th>
++              <th className="px-4 py-3">{messages.reports.plate}</th>
++              <th className="hidden px-4 py-3 md:table-cell">{messages.reports.chassis}</th>
++              <th className="hidden px-4 py-3 md:table-cell">{tr("ሽፋን", "Coverage")}</th>
++              <th className="hidden px-4 py-3 lg:table-cell">{tr("ቅርንጫፍ", "Branch")}</th>
++              {showSurveyor && <th className="hidden px-4 py-3 xl:table-cell">{tr("ሰርቬየር", "Surveyor")}</th>}
++              <th className="px-4 py-3">{messages.reports.status}</th>
+             </tr>
+           </thead>
+           <tbody>
+@@ -104,14 +113,13 @@
+               <tr>
+                 <td colSpan={showSurveyor ? 8 : 7} className="px-4 py-16 text-center">
+                   <div className="mx-auto max-w-sm space-y-2">
+-                    <p className="text-[color:var(--mut)]">
+-                      {messages.reports.empty}
+-                    </p>
++                    <p className="text-[color:var(--mut)]">{messages.reports.empty}</p>
+                     <Link
+                       href={`/${locale}/reports/new`}
++                      prefetch={false}
+                       className="inline-block text-sm font-medium text-[color:var(--acc)] hover:underline"
+                     >
+-                      Create your first report →
++                      {tr("የመጀመሪያ ሪፖርትዎን ይፍጠሩ →", "Create your first report →")}
+                     </Link>
+                   </div>
+                 </td>
+@@ -119,25 +127,18 @@
+             )}
+ 
+             {rows.map((r) => (
+-              <tr
+-                key={r.id}
+-                className="border-t border-[color:var(--line)] hover:bg-[color:var(--bg)]/50"
+-              >
++              <tr key={r.id} className="border-t border-[color:var(--line)] hover:bg-[color:var(--bg)]/50">
+                 <td className="px-4 py-3">
+                   <Link
+                     href={`/${locale}/reports/${r.id}`}
+                     className="font-medium text-[color:var(--acc)] hover:underline"
+                   >
+-                    {r.report_no ?? "Draft"}
++                    {r.report_no ?? tr("ረቂቅ", "Draft")}
+                   </Link>
+                 </td>
+-                <td className="px-4 py-3 tabular-nums">{r.report_date}</td>
+-                <td className="px-4 py-3 font-mono text-xs">
+-                  {r.plate_no ?? "—"}
+-                </td>
+-                <td className="hidden px-4 py-3 font-mono text-xs md:table-cell">
+-                  {r.chassis_no ?? "—"}
+-                </td>
++                <td className="px-4 py-3 tabular-nums">{formatDate(r.report_date)}</td>
++                <td className="px-4 py-3 font-mono text-xs">{r.plate_no ?? "—"}</td>
++                <td className="hidden px-4 py-3 font-mono text-xs md:table-cell">{r.chassis_no ?? "—"}</td>
+                 <td className="hidden px-4 py-3 md:table-cell">
+                   {r.coverage ? (
+                     <span
+@@ -149,9 +150,7 @@
+                       <span
+                         className={
+                           "h-1.5 w-1.5 rounded-full " +
+-                          (r.coverage === "comprehensive"
+-                            ? "bg-[color:var(--acc)]"
+-                            : "bg-[color:var(--warn)]")
++                          (r.coverage === "comprehensive" ? "bg-[color:var(--acc)]" : "bg-[color:var(--warn)]")
+                         }
+                       />
+                       {coverageLabel[r.coverage]}
+@@ -160,20 +159,20 @@
+                     <span className="text-xs text-[color:var(--mut)]">—</span>
+                   )}
+                 </td>
+-                <td className="hidden px-4 py-3 text-xs text-[color:var(--mut)] lg:table-cell">
+-                  {r.branch_code}
++                <td
++                  className="hidden max-w-[14rem] truncate px-4 py-3 text-xs text-[color:var(--mut)] lg:table-cell"
++                  title={r.branch_code}
++                >
++                  {r.branch_names?.[locale] ?? r.branch_names?.en ?? r.branch_code}
+                 </td>
+-                {/* Render Surveyor name if Admin or Supervisor */}
+                 {showSurveyor && (
+-                  <td className="hidden px-4 py-3 text-xs xl:table-cell">
+-                    {r.surveyor_name ?? "—"}
+-                  </td>
++                  <td className="hidden px-4 py-3 text-xs xl:table-cell">{r.surveyor_name ?? "—"}</td>
+                 )}
+                 <td className="px-4 py-3">
+                   <span
+                     className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${statusStyles[r.status]}`}
+                   >
+-                    {r.status}
++                    {statusLabel[r.status] ?? r.status}
+                   </span>
+                 </td>
+               </tr>
+@@ -187,4 +186,4 @@
+       </div>
+     </section>
+   );
+-}+}
+
+--- a/src/app/[locale]/layout.tsx
++++ b/src/app/[locale]/layout.tsx
+@@ -1,5 +1,6 @@
+ import { notFound } from "next/navigation";
+-import { locales, getMessages, isLocale } from "@/lib/i18n";
++import { locales, isLocale } from "@/lib/i18n";
++import { HtmlLang } from "@/components/HtmlLang";
+ 
+ export function generateStaticParams() {
+   return locales.map((locale) => ({ locale }));
+@@ -13,16 +14,15 @@
+   params: Promise<{ locale: string }>;
+ }) {
+   const { locale: raw } = await params;
+-  
++
+   if (!isLocale(raw)) {
+     notFound();
+   }
+-  
+-  const messages = getMessages(raw);
+ 
+-return (
+-  <div data-locale={raw}>
+-    {children}
+-  </div>
+-);
+-}+  return (
++    <div data-locale={raw}>
++      <HtmlLang locale={raw} />
++      {children}
++    </div>
++  );
++}
+
+--- a/src/app/api/reports/[id]/pdf/route.ts
++++ b/src/app/api/reports/[id]/pdf/route.ts
+@@ -19,6 +19,9 @@
+   const data = await getReport(id);
+   if (!data) {
+     return new Response("Not found", { status: 404 });
++  }
++  if (session.user.role === "surveyor" && data.report.surveyorId !== session.user.id) {
++    return new Response("Forbidden", { status: 403 });
+   }
+ 
+   const lang = (data.report.printLang ?? "am") as Locale;
+
+--- a/src/app/console/page.tsx
++++ b/src/app/console/page.tsx
+@@ -1,4 +1,4 @@
+-import { cookies } from "next/headers";
++import { isConsoleAuthed } from "@/server/console-auth";
+ import { ConsoleLogin } from "./ConsoleLogin";
+ import { SqlConsole } from "@/components/SqlConsole";
+ import { listMigrations } from "@/server/actions/sql";
+@@ -10,8 +10,7 @@
+ };
+ 
+ export default async function ConsolePage() {
+-  const cookieStore = await cookies();
+-  const isAuth = cookieStore.get("console_auth")?.value === "true";
++  const isAuth = await isConsoleAuthed();
+ 
+   if (!isAuth) {
+     return <ConsoleLogin />;
+
+--- a/src/app/global-error.tsx
++++ b/src/app/global-error.tsx
+@@ -1,4 +1,6 @@
+ "use client";
++
++import "./globals.css"; // global-error replaces the root layout, so it must load the styles itself
+ 
+ export default function GlobalError({
+   error,
+@@ -34,7 +36,7 @@
+             </p>
+             <button
+               onClick={reset}
+-              className="mt-6 w-full rounded-lg bg-teal-700 px-4 py-2.5 font-medium text-white hover:bg-teal-800"
++              className="mt-6 w-full rounded-lg bg-[#005baa] px-4 py-2.5 font-medium text-white hover:bg-[#00417e]"
+             >
+               Try again
+             </button>
+
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@ -65,10 +65,6 @@
+   font-feature-settings: "kern", "cv11";
+ }
+ 
+-/* Optional: Add a specific rule to ensure the Ethiopic font is prioritized */
+-textarea, input[type="text"], input[type="email"] {
+-  font-family: var(--font-ethiopic), sans-serif;
+-}
+ 
+ /* Focus ring – consistent across buttons, inputs, links */
+ button:focus-visible,
+@@ -120,4 +116,20 @@
+ @media print {
+   .no-print { display: none !important; }
+   .page { box-shadow: none !important; margin: 0 !important; }
+-}+}
++
++/* ---------- Phones ---------- */
++/* iOS Safari zooms the page when a focused field is < 16px */
++@media (max-width: 640px) {
++  input, select, textarea { font-size: 16px !important; }
++}
++html { -webkit-text-size-adjust: 100%; }
++
++/* ---------- Accessibility ---------- */
++@media (prefers-reduced-motion: reduce) {
++  *, *::before, *::after {
++    animation-duration: .01ms !important;
++    animation-iteration-count: 1 !important;
++    transition-duration: .01ms !important;
++  }
++}
+
+--- a/src/app/layout.tsx
++++ b/src/app/layout.tsx
+@@ -17,6 +17,7 @@
+     },
+   ],
+   variable: "--font-ethiopic",
++  display: "swap",
+ });
+ 
+ export const metadata = {
+@@ -27,7 +28,7 @@
+ export default function RootLayout({ children }: { children: React.ReactNode }) {
+   return (
+     <html lang="am" suppressHydrationWarning>
+-      <body className={`${ethiopic.variable} font-ethiopic`}>
++      <body className={`${ethiopic.variable} font-sans`}>
+         <Providers>
+           {children}
+         </Providers>
+
+--- a/src/components/AdminUsersTable.tsx
++++ b/src/components/AdminUsersTable.tsx
+@@ -1,5 +1,6 @@
+ "use client";
+ 
++import { unwrap } from "@/lib/action-result";
+ import { useEffect, useState, useTransition } from "react";
+ import { useRouter, useSearchParams, usePathname } from "next/navigation";
+ import { Button } from "@/components/ui/Button";
+@@ -77,7 +78,7 @@
+     } else {
+       start(async () => {
+         try {
+-          await setUserActive(row.id, true);
++          unwrap(await setUserActive(row.id, true));
+           toast.success(tr("ተጠቃሚው እንደገና ነቅቷል", "User reactivated"));
+           router.refresh();
+         } catch (err) {
+@@ -90,7 +91,7 @@
+   const doDeactivate = (row: UserRow) => {
+     start(async () => {
+       try {
+-        await setUserActive(row.id, false);
++        unwrap(await setUserActive(row.id, false));
+         toast.success(tr("ተጠቃሚው ጠፍቷል", "User deactivated"));
+         router.refresh();
+       } catch (err) {
+@@ -333,10 +334,10 @@
+     setSaving(true);
+     try {
+       if (isEdit) {
+-        await updateUser({ id: initial!.id, username, email, fullName, phone, role, branchId: Number(branchId), preferredLang });
++        unwrap(await updateUser({ id: initial!.id, username, email, fullName, phone, role, branchId: Number(branchId), preferredLang }));
+         toast.success("User updated");
+       } else {
+-        await createUser({ username, email, fullName, phone, role, branchId: Number(branchId), preferredLang });
++        unwrap(await createUser({ username, email, fullName, phone, role, branchId: Number(branchId), preferredLang }));
+         toast.success("User created. Default password is Insurance123");
+       }
+       onSaved();
+@@ -408,7 +409,7 @@
+     if (!user) return;
+     setSaving(true);
+     try {
+-      await resetUserPassword(user.id);
++      unwrap(await resetUserPassword(user.id));
+       toast.success(tr("የይለፍ ቃል ወደ Insurance123 ተቀይሯል", "Password reset to Insurance123"));
+       onSaved();
+     } catch (err) {
+
+--- a/src/components/AuditLogTable.tsx
++++ b/src/components/AuditLogTable.tsx
+@@ -2,6 +2,7 @@
+ 
+ import { Fragment, useState } from "react";
+ import { Button } from "@/components/ui/Button";
++import { formatDateTime } from "@/lib/format";
+ 
+ type Row = {
+   id: number;
+@@ -75,7 +76,7 @@
+               <Fragment key={r.id}>
+                 <tr className="border-t border-[color:var(--line)] hover:bg-[color:var(--bg)]/50">
+                   <td className="px-4 py-3 align-top tabular-nums text-xs text-[color:var(--mut)]">
+-                    {new Date(r.at).toLocaleString(locale === "am" ? "am-ET" : "en-GB")}
++                    {formatDateTime(r.at)}
+                   </td>
+                   <td className="px-4 py-3 align-top">
+                     <div className="font-medium">
+
+--- /dev/null
++++ b/src/components/HtmlLang.tsx
+@@ -0,0 +1,10 @@
++"use client";
++import { useEffect } from "react";
++
++/** The root layout is shared by all locales, so keep <html lang> in sync with the URL. */
++export function HtmlLang({ locale }: { locale: string }) {
++  useEffect(() => {
++    document.documentElement.lang = locale;
++  }, [locale]);
++  return null;
++}
+
+--- a/src/components/PrintSheet.tsx
++++ b/src/components/PrintSheet.tsx
+@@ -1,5 +1,6 @@
+ import type { Messages } from "@/lib/i18n";
+ import type { ReportItem, SurveyReport } from "~db/schema";
++import { formatDate } from "@/lib/format";
+ 
+ const ROWS = 22;
+ 
+@@ -85,7 +86,7 @@
+                 />
+               </div>
+               <div className="flex flex-col gap-[1mm]">
+-                <PrintField label="ቀን" value={report.reportDate} />
++                <PrintField label="ቀን" value={formatDate(report.reportDate)} />
+                 {/* FIX: Use branchName here */}
+                 <PrintField label="ቅርንጫፍ" value={branchName || String(report.branchId)} />
+                 <PrintField label="የሞተር ቁጥር" value={report.engineNo} />
+
+--- a/src/components/ReportForm.tsx
++++ b/src/components/ReportForm.tsx
+@@ -101,13 +101,25 @@
+       setHits([]);
+       return;
+     }
++    // Abort the previous request so a slow, older response can never overwrite a newer one.
++    const ctl = new AbortController();
+     const t = setTimeout(async () => {
+-      const res = await fetch(`/api/parts/search?q=${encodeURIComponent(q)}&limit=40`);
+-      const json = await res.json();
+-      setHits(json.items ?? []);
+-      setActive(0);
++      try {
++        const res = await fetch(`/api/parts/search?q=${encodeURIComponent(q.trim())}&limit=40`, {
++          signal: ctl.signal,
++        });
++        if (!res.ok) return;
++        const json = await res.json();
++        setHits(json.items ?? []);
++        setActive(0);
++      } catch {
++        /* aborted or offline – ignore */
++      }
+     }, 140);
+-    return () => clearTimeout(t);
++    return () => {
++      clearTimeout(t);
++      ctl.abort();
++    };
+   }, [q]);
+ 
+   const [conditionFor, setConditionFor] = useState<
+
+--- a/src/components/ReportsFilterBar.tsx
++++ b/src/components/ReportsFilterBar.tsx
+@@ -6,14 +6,19 @@
+ import type { Messages } from "@/lib/i18n";
+ 
+ export function ReportsFilterBar({
+-  branches, messages,
++  branches,
++  messages,
++  locale,
+ }: {
+   branches: { id: number; code: string; names: Record<string, string> }[];
+   messages: Messages;
++  locale?: string;
+ }) {
+   const router = useRouter();
+   const path = usePathname();
+   const sp = useSearchParams();
++  const lang = locale ?? path.split("/")[1] ?? "en";
++  const tr = (am: string, en: string) => (lang === "am" ? am : en);
+ 
+   const [v, setV] = useState({
+     plate: sp?.get("plate") ?? "",
+@@ -40,7 +45,7 @@
+ 
+   return (
+     <div className="rounded-[var(--r-lg)] border border-[color:var(--line)] bg-white p-3 shadow-[var(--shadow-sm)]">
+-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3 lg:grid-cols-6">
++      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+         <Input
+           placeholder={messages.reports.plate}
+           value={v.plate}
+@@ -53,32 +58,54 @@
+           onChange={(e) => setV({ ...v, chassis: e.target.value })}
+           onKeyDown={(e) => e.key === "Enter" && apply()}
+         />
+-        
+-        {/* Highlighted Status Dropdown */}
+-        <Select 
+-          value={v.status} 
++
++        <Select
++          value={v.status}
+           onChange={(e) => setV({ ...v, status: e.target.value })}
+           className="font-medium"
++          aria-label={messages.reports.status}
+         >
+-          <option value="">All Statuses</option>
+-          <option value="finalized">✅ Finalized</option>
+-          <option value="draft">📝 Draft</option>
+-          <option value="void">❌ Void</option>
++          <option value="">{tr("ሁሉም ሁኔታዎች", "All statuses")}</option>
++          <option value="finalized">{tr("የተጠናቀቀ", "Finalized")}</option>
++          <option value="draft">{tr("ረቂቅ", "Draft")}</option>
++          <option value="void">{tr("የተሰረዘ", "Void")}</option>
+         </Select>
+ 
+-        <Select value={v.branch} onChange={(e) => setV({ ...v, branch: e.target.value })}>
+-          <option value="">All branches</option>
++        <Select
++          value={v.branch}
++          onChange={(e) => setV({ ...v, branch: e.target.value })}
++          aria-label={tr("ቅርንጫፍ", "Branch")}
++        >
++          <option value="">{tr("ሁሉም ቅርንጫፎች", "All branches")}</option>
+           {branches?.map((b) => (
+-            <option key={b.id} value={b.id}>{b.names?.en ?? b.code}</option>
++            <option key={b.id} value={b.id}>
++              {b.names?.[lang] ?? b.names?.en ?? b.code}
++            </option>
+           ))}
+         </Select>
+-        <Input type="date" value={v.from} onChange={(e) => setV({ ...v, from: e.target.value })} title="From Date" />
+-        <Input type="date" value={v.to} onChange={(e) => setV({ ...v, to: e.target.value })} title="To Date" />
++        <Input
++          type="date"
++          value={v.from}
++          onChange={(e) => setV({ ...v, from: e.target.value })}
++          title={tr("ከቀን", "From date")}
++          aria-label={tr("ከቀን", "From date")}
++        />
++        <Input
++          type="date"
++          value={v.to}
++          onChange={(e) => setV({ ...v, to: e.target.value })}
++          title={tr("እስከ ቀን", "To date")}
++          aria-label={tr("እስከ ቀን", "To date")}
++        />
+       </div>
+       <div className="mt-3 flex justify-end gap-2">
+-        <Button variant="ghost" size="sm" onClick={clear}>Clear Filters</Button>
+-        <Button variant="primary" size="sm" onClick={apply}>Search</Button>
++        <Button variant="ghost" size="sm" onClick={clear}>
++          {tr("አጽዳ", "Clear filters")}
++        </Button>
++        <Button variant="primary" size="sm" onClick={apply}>
++          {tr("ፈልግ", "Search")}
++        </Button>
+       </div>
+     </div>
+   );
+-}+}
+
+--- a/src/components/ui/Button.tsx
++++ b/src/components/ui/Button.tsx
+@@ -18,12 +18,12 @@
+   "outline-danger":
+     "border border-[#fecaca] text-[color:var(--rep)] hover:bg-[color:var(--rep-2)]",
+   icon:
+-    "text-[color:var(--mut)] hover:bg-[color:var(--bg)] hover:text-ink p-1.5 rounded-md",
++    "text-[color:var(--mut)] hover:bg-[color:var(--bg)] hover:text-ink p-1.5 max-md:p-2.5 rounded-md",
+ };
+ 
+ const SIZES: Record<Size, string> = {
+-  xs: "h-7 px-2 text-xs gap-1",
+-  sm: "h-8 px-3 text-sm gap-1.5",
++  xs: "h-7 px-2 text-xs gap-1 max-md:h-9 max-md:px-3",
++  sm: "h-8 px-3 text-sm gap-1.5 max-md:h-9",
+   md: "h-9 px-3.5 text-sm gap-2",
+   lg: "h-11 px-5 text-base gap-2",
+ };
+@@ -43,6 +43,8 @@
+     <button
+       ref={ref}
+       disabled={disabled || loading}
++      aria-label={variant === "icon" ? rest.title : undefined}
++      aria-busy={loading || undefined}
+       className={[
+         "inline-flex items-center justify-center rounded-[var(--r)] font-medium",
+         "disabled:cursor-not-allowed whitespace-nowrap select-none",
+
+--- a/src/components/ui/Modal.tsx
++++ b/src/components/ui/Modal.tsx
+@@ -33,7 +33,10 @@
+       onClick={onClose}
+     >
+       <div
+-        className={`w-full ${width} anim-pop rounded-[var(--r-lg)] bg-white shadow-[var(--shadow-lg)]`}
++        role="dialog"
++        aria-modal="true"
++        aria-label={title}
++        className={`flex max-h-[calc(100dvh_-_2rem)] w-full flex-col ${width} anim-pop rounded-[var(--r-lg)] bg-white shadow-[var(--shadow-lg)]`}
+         onClick={(e) => e.stopPropagation()}
+       >
+         <div className="flex items-center justify-between border-b border-[color:var(--line)] px-5 py-3.5">
+@@ -48,7 +51,7 @@
+             </svg>
+           </button>
+         </div>
+-        <div className="px-5 py-4">{children}</div>
++        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
+         {footer && (
+           <div className="flex justify-end gap-2 border-t border-[color:var(--line)] px-5 py-3">
+             {footer}
+
+--- a/src/components/ui/Pagination.tsx
++++ b/src/components/ui/Pagination.tsx
+@@ -7,6 +7,7 @@
+   const router = useRouter();
+   const path = usePathname();
+   const sp = useSearchParams();
++  const am = path.split("/")[1] === "am";
+   const pages = Math.max(1, Math.ceil(total / pageSize));
+ 
+   const go = (p: number) => {
+@@ -21,13 +22,16 @@
+   const window = Array.from({ length: Math.min(5, pages) }, (_, i) => first + i);
+ 
+   return (
+-    <div className="flex items-center justify-between gap-4 px-4 py-3">
++    <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-3 sm:px-4">
+       <p className="text-sm text-[color:var(--mut)]">
+-        {total.toLocaleString()} total · page {page} of {pages}
++        {am
++          ? `ጠቅላላ ${total.toLocaleString()} · ገጽ ${page} / ${pages}`
++          : `${total.toLocaleString()} total · page ${page} of ${pages}`}
+       </p>
+       <div className="flex items-center gap-1">
+         <button
+           onClick={() => go(1)}
++          aria-label="First page"
+           disabled={page === 1}
+           className="rounded-md border border-[color:var(--line-2)] bg-white px-2.5 py-1.5 text-sm hover:bg-[color:var(--bg)] disabled:opacity-40"
+         >
+@@ -35,6 +39,7 @@
+         </button>
+         <button
+           onClick={() => go(page - 1)}
++          aria-label="Previous page"
+           disabled={page === 1}
+           className="rounded-md border border-[color:var(--line-2)] bg-white px-2.5 py-1.5 text-sm hover:bg-[color:var(--bg)] disabled:opacity-40"
+         >
+@@ -45,7 +50,7 @@
+             key={p}
+             onClick={() => go(p)}
+             className={
+-              "min-w-8 rounded-md px-2.5 py-1.5 text-sm " +
++              "min-w-8 rounded-md px-2.5 py-1.5 text-sm max-sm:min-w-9 max-sm:py-2 " +
+               (p === page
+                 ? "bg-[color:var(--acc)] text-white"
+                 : "border border-[color:var(--line-2)] bg-white hover:bg-[color:var(--bg)]")
+@@ -56,6 +61,7 @@
+         ))}
+         <button
+           onClick={() => go(page + 1)}
++          aria-label="Next page"
+           disabled={page === pages}
+           className="rounded-md border border-[color:var(--line-2)] bg-white px-2.5 py-1.5 text-sm hover:bg-[color:var(--bg)] disabled:opacity-40"
+         >
+@@ -63,6 +69,7 @@
+         </button>
+         <button
+           onClick={() => go(pages)}
++          aria-label="Last page"
+           disabled={page === pages}
+           className="rounded-md border border-[color:var(--line-2)] bg-white px-2.5 py-1.5 text-sm hover:bg-[color:var(--bg)] disabled:opacity-40"
+         >
+
+--- a/src/components/ui/Toast.tsx
++++ b/src/components/ui/Toast.tsx
+@@ -51,11 +51,15 @@
+   };
+ 
+   return (
+-    <div className="pointer-events-none fixed bottom-4 right-4 z-[100] flex flex-col gap-2">
++    <div
++      role="status"
++      aria-live="polite"
++      className="pointer-events-none fixed inset-x-3 bottom-3 z-[100] flex flex-col items-end gap-2 sm:inset-x-auto sm:bottom-4 sm:right-4"
++    >
+       {items.map((t) => (
+         <div
+           key={t.id}
+-          className={`anim-slide pointer-events-auto flex max-w-sm items-start gap-3 rounded-[var(--r)] border-l-4 ${color[t.kind]} px-4 py-3 shadow-[var(--shadow-lg)]`}
++          className={`anim-slide pointer-events-auto flex w-full max-w-sm items-start sm:w-auto gap-3 rounded-[var(--r)] border-l-4 ${color[t.kind]} px-4 py-3 shadow-[var(--shadow-lg)]`}
+         >
+           <span className={`flex h-6 w-6 flex-none items-center justify-center rounded-full text-xs font-bold ${iconBg[t.kind]}`}>
+             {icon[t.kind]}
+
+--- /dev/null
++++ b/src/lib/action-result.ts
+@@ -0,0 +1,14 @@
++// Pure helpers (safe to import from client components).
++// In production Next.js hides the message of any error thrown from a server action,
++// so expected failures are RETURNED as { ok: false, error } and re-thrown on the client by unwrap().
++export type ActionResult<T = void> =
++  | { ok: true; data: T }
++  | { ok: false; error: string };
++
++/** Throw this for expected, user-facing failures. */
++export class UserError extends Error {}
++
++export function unwrap<T>(r: ActionResult<T>): T {
++  if (!r.ok) throw new Error(r.error);
++  return r.data;
++}
+
+--- /dev/null
++++ b/src/lib/format.ts
+@@ -0,0 +1,37 @@
++// One date format for the whole app: dd/MM/yyyy (Gregorian), Addis Ababa time for timestamps.
++const pad = (n: number) => String(n).padStart(2, "0");
++
++/** "2026-11-09" or a Date/ISO timestamp -> "09/11/2026" */
++export function formatDate(v: string | Date | null | undefined): string {
++  if (!v) return "—";
++  if (typeof v === "string") {
++    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v); // plain DATE column: no timezone shifting
++    if (m) return `${m[3]}/${m[2]}/${m[1]}`;
++  }
++  const d = v instanceof Date ? v : new Date(v);
++  if (Number.isNaN(d.getTime())) return String(v);
++  return new Intl.DateTimeFormat("en-GB", {
++    timeZone: "Africa/Addis_Ababa",
++    day: "2-digit",
++    month: "2-digit",
++    year: "numeric",
++  }).format(d);
++}
++
++/** timestamp -> "09/11/2026 14:05" */
++export function formatDateTime(v: string | Date | null | undefined): string {
++  if (!v) return "—";
++  const d = v instanceof Date ? v : new Date(v);
++  if (Number.isNaN(d.getTime())) return String(v);
++  const parts = new Intl.DateTimeFormat("en-GB", {
++    timeZone: "Africa/Addis_Ababa",
++    day: "2-digit",
++    month: "2-digit",
++    year: "numeric",
++    hour: "2-digit",
++    minute: "2-digit",
++    hour12: false,
++  }).formatToParts(d);
++  const g = (t: string) => parts.find((p) => p.type === t)?.value ?? pad(0);
++  return `${g("day")}/${g("month")}/${g("year")} ${g("hour")}:${g("minute")}`;
++}
+
+--- a/src/pdf/SurveyReportPdf.tsx
++++ b/src/pdf/SurveyReportPdf.tsx
+@@ -13,6 +13,7 @@
+ import { join } from "node:path";
+ import type { Messages } from "@/lib/i18n";
+ import type { ReportItem, SurveyReport } from "~db/schema";
++import { formatDate } from "@/lib/format";
+ 
+ const FONT_REGULAR = join(
+   process.cwd(),
+@@ -371,7 +372,7 @@
+                 />
+               </View>
+               <View style={S.col}>
+-                <Field label="ቀን" value={report.reportDate} />
++                <Field label="ቀን" value={formatDate(report.reportDate)} />
+                 {/* FIX: Corrected typo ቅርጣጫር -> ቅርንጫፍ and use branchName */}
+                 <Field label="ቅርንጫፍ" value={branchName || String(report.branchId)} />
+                 <Field label="የሞተር ቁጥር" value={report.engineNo} />
+
+--- /dev/null
++++ b/src/server/action-utils.ts
+@@ -0,0 +1,35 @@
++import "server-only";
++import { ZodError } from "zod";
++import { UserError, type ActionResult } from "@/lib/action-result";
++
++/* eslint-disable @typescript-eslint/no-explicit-any */
++export function friendlyError(e: unknown): string {
++  if (e instanceof UserError) return e.message;
++  if (e instanceof ZodError) return e.issues[0]?.message ?? "Invalid input";
++
++  const msg = e instanceof Error ? e.message : "";
++  if (msg === "FORBIDDEN") return "You don't have permission to do this.";
++  if (msg === "UNAUTHORIZED") return "Your session has expired. Please sign in again.";
++
++  const pg: any = (e as any)?.cause ?? e; // drizzle wraps driver errors in .cause
++  if (pg?.code === "23505") {
++    const c = String(pg.constraint ?? "");
++    if (c.includes("username")) return "That username is already taken.";
++    if (c.includes("email")) return "That email is already in use.";
++    return "That value already exists.";
++  }
++  if (pg?.code === "23503") return "This record is still referenced by other data.";
++  if (pg?.code === "P0001" && typeof pg.message === "string") return pg.message; // RAISE EXCEPTION
++
++  console.error("[action]", e);
++  return "Something went wrong. Please try again.";
++}
++
++/** Run an action body and turn any failure into { ok:false, error }. Never throws. */
++export async function safe<T>(fn: () => Promise<T>): Promise<ActionResult<T>> {
++  try {
++    return { ok: true, data: await fn() };
++  } catch (e) {
++    return { ok: false, error: friendlyError(e) };
++  }
++}
+
+--- a/src/server/actions/console.ts
++++ b/src/server/actions/console.ts
+@@ -2,22 +2,40 @@
+ 
+ import { cookies } from "next/headers";
+ import { redirect } from "next/navigation";
++import {
++  CONSOLE_COOKIE,
++  CONSOLE_PATH,
++  checkRateLimit,
++  clearRateLimit,
++  clientKey,
++  createConsoleToken,
++  requestIsHttps,
++  safeEqual,
++} from "@/server/console-auth";
+ 
+ export async function loginConsole(formData: FormData) {
+-  const password = formData.get("password") as string;
+-  const expectedPassword = process.env.CONSOLE_PASSWORD;
++  const password = String(formData.get("password") ?? "");
++  const expected = process.env.CONSOLE_PASSWORD;
+ 
+-  if (!expectedPassword) {
+-    throw new Error("CONSOLE_PASSWORD is not set in environment variables.");
++  if (!expected) {
++    return { error: "CONSOLE_PASSWORD is not configured on the server." };
+   }
+ 
+-  if (password === expectedPassword) {
++  const key = await clientKey();
++  const limit = checkRateLimit(key);
++  if (!limit.ok) {
++    return { error: `Too many attempts. Try again in ${limit.retryAfterMin} minute(s).` };
++  }
++
++  if (safeEqual(password, expected)) {
++    clearRateLimit(key);
+     const cookieStore = await cookies();
+-    cookieStore.set("console_auth", "true", {
++    cookieStore.set(CONSOLE_COOKIE, createConsoleToken(), {
+       httpOnly: true,
+-      secure: process.env.NODE_ENV === "production",
+-      path: "/",
+-      maxAge: 60 * 60 * 24, // 24 hours
++      sameSite: "strict",
++      secure: await requestIsHttps(),
++      path: CONSOLE_PATH,
++      maxAge: 60 * 60 * 8,
+     });
+     redirect("/console");
+   }
+@@ -27,6 +45,6 @@
+ 
+ export async function logoutConsole() {
+   const cookieStore = await cookies();
+-  cookieStore.delete("console_auth");
++  cookieStore.delete({ name: CONSOLE_COOKIE, path: CONSOLE_PATH });
+   redirect("/console");
+-}+}
+
+--- a/src/server/actions/items.ts
++++ b/src/server/actions/items.ts
+@@ -7,7 +7,13 @@
+ import { withActor, type Tx } from "@/server/audit";
+ import { newItemSchema } from "@/lib/zod";
+ 
+-async function ensureEditable(tx: Tx, reportId: string) {
++const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
++
++async function ensureEditable(
++  tx: Tx,
++  reportId: string,
++  user: { id: string; role: string },
++) {
+   const [r] = await tx
+     .select({
+       status: surveyReports.status,
+@@ -17,6 +23,8 @@
+     .where(eq(surveyReports.id, reportId))
+     .limit(1);
+   if (!r) throw new Error("Report not found");
++  // surveyors may only touch their own reports
++  if (user.role === "surveyor" && r.surveyorId !== user.id) throw new Error("Forbidden");
+   if (r.status !== "draft") throw new Error("Report is not editable");
+   return r;
+ }
+@@ -49,7 +57,7 @@
+   const row = await withActor(
+     { id: user.id, email: user.email },
+     async (tx) => {
+-      const r = await ensureEditable(tx, data.reportId);
++      const r = await ensureEditable(tx, data.reportId, user);
+       if (r.surveyorId !== user.id && user.role === "surveyor") {
+         throw new Error("Forbidden");
+       }
+@@ -103,7 +111,7 @@
+         .limit(1);
+       if (!row) return { ok: true as const, reportId: null as string | null };
+ 
+-      await ensureEditable(tx, row.reportId);
++      await ensureEditable(tx, row.reportId, user);
+       await tx.delete(reportItems).where(eq(reportItems.id, itemId));
+       await renumber(tx, row.reportId, row.action);
+       return { ok: true as const, reportId: row.reportId };
+@@ -126,7 +134,7 @@
+         .where(eq(reportItems.id, itemId))
+         .limit(1);
+       if (!row) throw new Error("Not found");
+-      await ensureEditable(tx, row.reportId);
++      await ensureEditable(tx, row.reportId, user);
+       if (row.action !== "replace") {
+         throw new Error("Recovery only applies to replaced items");
+       }
+@@ -162,7 +170,7 @@
+         .where(eq(reportItems.id, itemId))
+         .limit(1);
+       if (!row) throw new Error("Item not found");
+-      await ensureEditable(tx, row.reportId);
++      await ensureEditable(tx, row.reportId, user);
+ 
+       if (row.action === "replace" && !values.condition) {
+         throw new Error("Condition is required for replacement items");
+@@ -208,7 +216,7 @@
+       if (!row) throw new Error("Not found");
+       if (row.action === to)
+         return { ok: true as const, reportId: row.reportId };
+-      await ensureEditable(tx, row.reportId);
++      await ensureEditable(tx, row.reportId, user);
+ 
+       const [{ nextPos }] = await tx
+         .select({
+@@ -260,9 +268,12 @@
+         .from(reportItems)
+         .where(eq(reportItems.id, ids[0]))
+         .limit(1);
+-      if (first) await ensureEditable(tx, first.reportId);
+-
+-      await tx.delete(reportItems).where(inArray(reportItems.id, ids));
++      if (!first) return { ok: true as const, reportId: null as string | null };
++      await ensureEditable(tx, first.reportId, user);
++
++      await tx
++        .delete(reportItems)
++        .where(and(inArray(reportItems.id, ids), eq(reportItems.reportId, first.reportId)));
+ 
+       if (first) {
+         await renumber(tx, first.reportId, "replace");
+@@ -297,7 +308,7 @@
+         .where(eq(reportItems.id, ids[0]))
+         .limit(1);
+       if (!first) return { ok: true as const, reportId: null as string | null };
+-      await ensureEditable(tx, first.reportId);
++      await ensureEditable(tx, first.reportId, user);
+ 
+       const [{ nextPos }] = await tx
+         .select({
+@@ -314,7 +325,7 @@
+       const rows = await tx
+         .select()
+         .from(reportItems)
+-        .where(inArray(reportItems.id, ids));
++        .where(and(inArray(reportItems.id, ids), eq(reportItems.reportId, first.reportId)));
+ 
+       let pos = nextPos;
+       for (const r of rows) {
+@@ -359,7 +370,7 @@
+         .where(eq(reportItems.id, ids[0]))
+         .limit(1);
+       if (!first) return { ok: true as const, reportId: null as string | null };
+-      await ensureEditable(tx, first.reportId);
++      await ensureEditable(tx, first.reportId, user);
+ 
+       await tx
+         .update(reportItems)
+@@ -367,6 +378,7 @@
+         .where(
+           and(
+             inArray(reportItems.id, ids),
++            eq(reportItems.reportId, first.reportId),
+             eq(reportItems.action, "replace"),
+           ),
+         );
+@@ -389,18 +401,18 @@
+   const result = await withActor(
+     { id: user.id, email: user.email },
+     async (tx) => {
+-      await ensureEditable(tx, reportId);
++      await ensureEditable(tx, reportId, user);
+       for (let i = 0; i < orderedIds.length; i++) {
+         await tx
+           .update(reportItems)
+           .set({ position: 10000 + i })
+-          .where(eq(reportItems.id, orderedIds[i]));
++          .where(and(eq(reportItems.id, orderedIds[i]), eq(reportItems.reportId, reportId)));
+       }
+       for (let i = 0; i < orderedIds.length; i++) {
+         await tx
+           .update(reportItems)
+           .set({ position: i + 1 })
+-          .where(eq(reportItems.id, orderedIds[i]));
++          .where(and(eq(reportItems.id, orderedIds[i]), eq(reportItems.reportId, reportId)));
+       }
+       return { ok: true as const };
+     },
+@@ -430,12 +442,13 @@
+   const result = await withActor(
+     { id: user.id, email: user.email },
+     async (tx) => {
+-      await ensureEditable(tx, reportId);
++      await ensureEditable(tx, reportId, user);
+       await tx.delete(reportItems).where(eq(reportItems.reportId, reportId));
+ 
+       if (snapshot.length > 0) {
+         await tx.insert(reportItems).values(
+           snapshot.map((s) => ({
++            ...(UUID_RE.test(s.id) ? { id: s.id } : {}),
+             reportId,
+             action: s.action,
+             position: s.position,
+
+--- a/src/server/actions/reports.ts
++++ b/src/server/actions/reports.ts
+@@ -16,7 +16,7 @@
+       const [u] = await tx
+         .select({ id: users.id, branchId: users.branchId })
+         .from(users)
+-        .where(eq(users.id, userId))
++        .where(eq(users.id, user.id)) // always the signed-in user, never a client-supplied id
+         .limit(1);
+ 
+       if (!u) {
+@@ -101,6 +101,7 @@
+ 
+       if (!r) throw new Error("Not found");
+       if (r.status !== "draft") throw new Error("Report is not draft");
++      if (user.role === "surveyor" && r.surveyorId !== user.id) throw new Error("Forbidden");
+ 
+       // The PL/pgSQL function inherits app.user_id from this transaction,
+       // so every write it performs (report status, parts.usage_count)
+
+--- a/src/server/actions/sql.ts
++++ b/src/server/actions/sql.ts
+@@ -10,7 +10,6 @@
+ import { auditLog } from "~db/schema";
+ import { requireRole } from "@/server/permissions";
+ import { env } from "@/lib/env";
+-import { readdir } from "fs/promises";
+ //import { join } from "path";
+ 
+ /* ------------------------------------------------------------------ */
+@@ -199,7 +198,10 @@
+ export async function listMigrationStatus(): Promise<MigrationFile[]> {
+   if (!env.ALLOW_SQL_CONSOLE) throw new Error("SQL console is disabled");
+   await requireRole("admin");
+-
++  return readMigrationStatus();
++}
++
++async function readMigrationStatus(): Promise<MigrationFile[]> {
+   const dir = join(process.cwd(), "db", "migrations");
+   const files = existsSync(dir)
+     ? readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()
+@@ -222,29 +224,9 @@
+   }));
+ }
+ 
+-export type MigrationFile = {
+-  name: string;
+-  applied: boolean;
+-  appliedAt: string | null;
+-};
+-
+ export async function listMigrations(): Promise<MigrationFile[]> {
+-  try {
+-    const dir = join(process.cwd(), "db/migrations");
+-    const files = await readdir(dir);
+-    
+-    // Filter and sort .sql files
+-    const sqlFiles = files.filter((f) => f.endsWith(".sql")).sort();
+-    
+-    return sqlFiles.map((name) => ({
+-      name,
+-      applied: false, // Since we don't track applied status here, we default to false
+-      appliedAt: null,
+-    }));
+-  } catch (error) {
+-    console.error("Failed to read migrations folder", error);
+-    return [];
+-  }
++  await requireRole("admin");
++  return readMigrationStatus();
+ }
+ 
+ export async function runPendingMigration(name: string) {
+
+--- a/src/server/actions/users.ts
++++ b/src/server/actions/users.ts
+@@ -1,14 +1,18 @@
+ "use server";
+ 
+ import bcrypt from "bcryptjs";
+-import { eq } from "drizzle-orm";
+-import { db } from "~db/index";
++import { eq, sql } from "drizzle-orm";
++import { revalidatePath } from "next/cache";
++import { z } from "zod";
+ import { users } from "~db/schema";
+-import { revalidatePath } from "next/cache";
++import { UserError, type ActionResult } from "@/lib/action-result";
++import { safe } from "@/server/action-utils";
++import { withActor, type Tx } from "@/server/audit";
++import { requireRole } from "@/server/permissions";
+ 
+ const DEFAULT_PASSWORD = "Insurance123";
+ 
+-export async function createUser(data: {
++type UserPayload = {
+   username: string;
+   email: string;
+   fullName: string;
+@@ -16,66 +20,104 @@
+   role: string;
+   branchId: number;
+   preferredLang: string;
+-}) {
+-  const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, 10);
++};
+ 
+-  await db.insert(users).values({
+-    username: data.username,
+-    email: data.email,
+-    fullName: data.fullName,
+-    phone: data.phone,
+-    role: data.role,
+-    branchId: data.branchId,
+-    preferredLang: data.preferredLang,
+-    passwordHash,
+-    mustChangePassword: true, // Force change on first login
+-    isActive: true,
+-  });
++const userInput = z.object({
++  username: z
++    .string()
++    .trim()
++    .min(3, "Username must be at least 3 characters")
++    .max(50)
++    .regex(/^[A-Za-z0-9._-]+$/, "Username may only contain letters, numbers, . _ and -"),
++  email: z.string().trim().toLowerCase().email("Enter a valid email address").max(255),
++  fullName: z.string().trim().min(2, "Enter the full name").max(100),
++  phone: z.string().trim().max(20, "Phone is too long"),
++  role: z.enum(["admin", "supervisor", "surveyor"], { errorMap: () => ({ message: "Choose a role" }) }),
++  branchId: z.number({ invalid_type_error: "Choose a branch" }).int().positive("Choose a branch"),
++  preferredLang: z.enum(["am", "en", "om"]),
++});
+ 
+-  revalidatePath("/admin/users");
++/** Active admins other than `excludingId` (so we never lock everyone out). */
++async function otherActiveAdmins(tx: Tx, excludingId: string): Promise<number> {
++  const r = await tx.execute<{ n: number }>(
++    sql`select count(*)::int as n from users where role = 'admin' and is_active = true and id <> ${excludingId}::uuid`,
++  );
++  return r.rows[0]?.n ?? 0;
+ }
+ 
+-export async function updateUser(data: {
+-  id: string;
+-  username: string;
+-  email: string;
+-  fullName: string;
+-  phone: string;
+-  role: string;
+-  branchId: number;
+-  preferredLang: string;
+-}) {
+-  await db
+-    .update(users)
+-    .set({
+-      username: data.username,
+-      email: data.email,
+-      fullName: data.fullName,
+-      phone: data.phone,
+-      role: data.role,
+-      branchId: data.branchId,
+-      preferredLang: data.preferredLang,
+-    })
+-    .where(eq(users.id, data.id));
++const refresh = () => revalidatePath("/[locale]/admin/users", "page");
+ 
+-  revalidatePath("/admin/users");
++export async function createUser(data: UserPayload): Promise<ActionResult> {
++  return safe(async () => {
++    const actor = await requireRole("admin");
++    const v = userInput.parse(data);
++    const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, 10);
++
++    await withActor({ id: actor.id, email: actor.email ?? "" }, async (tx) => {
++      await tx.insert(users).values({
++        ...v,
++        phone: v.phone || null,
++        passwordHash,
++        mustChangePassword: true, // force change on first login
++        isActive: true,
++      });
++    });
++    refresh();
++  });
+ }
+ 
+-export async function setUserActive(id: string, isActive: boolean) {
+-  await db.update(users).set({ isActive }).where(eq(users.id, id));
+-  revalidatePath("/admin/users");
++export async function updateUser(data: UserPayload & { id: string }): Promise<ActionResult> {
++  return safe(async () => {
++    const actor = await requireRole("admin");
++    const id = z.string().uuid().parse(data.id);
++    const v = userInput.parse(data);
++
++    await withActor({ id: actor.id, email: actor.email ?? "" }, async (tx) => {
++      const [target] = await tx.select().from(users).where(eq(users.id, id)).limit(1);
++      if (!target) throw new UserError("User not found.");
++
++      if (target.role === "admin" && v.role !== "admin") {
++        if (target.id === actor.id) throw new UserError("You can't remove your own admin role.");
++        if ((await otherActiveAdmins(tx, target.id)) < 1)
++          throw new UserError("At least one active admin is required.");
++      }
++
++      await tx
++        .update(users)
++        .set({ ...v, phone: v.phone || null })
++        .where(eq(users.id, id));
++    });
++    refresh();
++  });
+ }
+ 
+-export async function resetUserPassword(id: string) {
+-  const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, 10);
++export async function setUserActive(id: string, isActive: boolean): Promise<ActionResult> {
++  return safe(async () => {
++    const actor = await requireRole("admin");
++    z.string().uuid().parse(id);
+ 
+-  await db
+-    .update(users)
+-    .set({
+-      passwordHash,
+-      mustChangePassword: true,
+-    })
+-    .where(eq(users.id, id));
++    await withActor({ id: actor.id, email: actor.email ?? "" }, async (tx) => {
++      if (!isActive) {
++        if (id === actor.id) throw new UserError("You can't deactivate your own account.");
++        const [target] = await tx.select().from(users).where(eq(users.id, id)).limit(1);
++        if (target?.role === "admin" && (await otherActiveAdmins(tx, id)) < 1)
++          throw new UserError("At least one active admin is required.");
++      }
++      await tx.update(users).set({ isActive }).where(eq(users.id, id));
++    });
++    refresh();
++  });
++}
+ 
+-  revalidatePath("/admin/users");
+-}+export async function resetUserPassword(id: string): Promise<ActionResult> {
++  return safe(async () => {
++    const actor = await requireRole("admin");
++    z.string().uuid().parse(id);
++    const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, 10);
++
++    await withActor({ id: actor.id, email: actor.email ?? "" }, async (tx) => {
++      await tx.update(users).set({ passwordHash, mustChangePassword: true }).where(eq(users.id, id));
++    });
++    refresh();
++  });
++}
+
+--- /dev/null
++++ b/src/server/console-auth.ts
+@@ -0,0 +1,68 @@
++import "server-only";
++import { createHmac, timingSafeEqual } from "node:crypto";
++import { cookies, headers } from "next/headers";
++import { env } from "@/lib/env";
++
++export const CONSOLE_COOKIE = "console_auth";
++export const CONSOLE_PATH = "/console";
++const TTL_MS = 8 * 60 * 60 * 1000; // 8 hours
++
++const sign = (payload: string) =>
++  createHmac("sha256", env.AUTH_SECRET).update("console:" + payload).digest("base64url");
++
++/** Token = "<expiryMs>.<hmac>". It cannot be forged without AUTH_SECRET. */
++export function createConsoleToken(): string {
++  const exp = String(Date.now() + TTL_MS);
++  return `${exp}.${sign(exp)}`;
++}
++
++export function verifyConsoleToken(token?: string | null): boolean {
++  if (!token) return false;
++  const [exp, sig] = token.split(".");
++  if (!exp || !sig || !/^\d+$/.test(exp)) return false;
++  if (Number(exp) < Date.now()) return false;
++  const a = Buffer.from(sig);
++  const b = Buffer.from(sign(exp));
++  return a.length === b.length && timingSafeEqual(a, b);
++}
++
++export async function isConsoleAuthed(): Promise<boolean> {
++  return verifyConsoleToken((await cookies()).get(CONSOLE_COOKIE)?.value);
++}
++
++/** Constant-time string comparison. */
++export function safeEqual(a: string, b: string): boolean {
++  const ha = createHmac("sha256", "cmp").update(a).digest();
++  const hb = createHmac("sha256", "cmp").update(b).digest();
++  return timingSafeEqual(ha, hb);
++}
++
++/** Only mark the cookie Secure when the site is really served over HTTPS (LAN installs are often plain HTTP). */
++export async function requestIsHttps(): Promise<boolean> {
++  const proto = (await headers()).get("x-forwarded-proto");
++  return proto === "https" || !!env.AUTH_URL?.startsWith("https://");
++}
++
++/* ---- tiny in-memory brute-force limiter (per server process) ---- */
++const attempts = new Map<string, { n: number; reset: number }>();
++
++export async function clientKey(): Promise<string> {
++  const h = await headers();
++  return (h.get("x-forwarded-for")?.split(",")[0] ?? h.get("x-real-ip") ?? "local").trim();
++}
++
++export function checkRateLimit(key: string, max = 5, windowMs = 15 * 60 * 1000) {
++  const now = Date.now();
++  const rec = attempts.get(key);
++  if (!rec || rec.reset < now) {
++    attempts.set(key, { n: 1, reset: now + windowMs });
++    return { ok: true, retryAfterMin: 0 };
++  }
++  rec.n += 1;
++  if (rec.n > max) return { ok: false, retryAfterMin: Math.ceil((rec.reset - now) / 60000) };
++  return { ok: true, retryAfterMin: 0 };
++}
++
++export function clearRateLimit(key: string) {
++  attempts.delete(key);
++}
+
+--- a/src/server/permissions.ts
++++ b/src/server/permissions.ts
+@@ -1,6 +1,6 @@
+ import "server-only";
+ import { auth } from "./auth";
+-import { cookies } from "next/headers";
++import { isConsoleAuthed } from "./console-auth";
+ 
+ export type Role = "admin" | "supervisor" | "surveyor";
+ 
+@@ -37,22 +37,20 @@
+ 
+ export async function requireUser() {
+   const session = await auth();
+-  
++
+   if (!session?.user) {
+-    const cookieStore = await cookies();
+-    const isConsoleAuth = cookieStore.get("console_auth")?.value === "true";
+-    
+-    if (isConsoleAuth) {
+-      return { 
+-        id: "00000000-0000-0000-0000-000000000000", 
+-        role: "admin", 
+-        name: "Console Admin" 
+-      } as any; 
++    // The /console page has its own password and a SIGNED cookie (see console-auth.ts).
++    if (await isConsoleAuthed()) {
++      return {
++        id: "00000000-0000-0000-0000-000000000000",
++        email: "console@system.local",
++        role: "admin",
++        name: "Console Admin",
++      } as any;
+     }
+-    
+     throw new Error("UNAUTHORIZED");
+   }
+-  
++
+   return session.user;
+ }
+ 
+
+--- a/src/server/queries/reports.ts
++++ b/src/server/queries/reports.ts
+@@ -40,11 +40,13 @@
+     status: "draft" | "finalized" | "void";
+     coverage: "comprehensive" | "third_party" | null;
+     branch_code: string;
++    branch_names: Record<string, string> | null;
+     surveyor_name: string | null;
+   }>(sql`
+     select 
+       r.id, r.report_no, r.report_date, r.plate_no, r.chassis_no, r.status, r.coverage,
+       b.code as branch_code,
++      b.names as branch_names,
+       u.full_name as surveyor_name
+     from survey_reports r
+     join branches b on b.id = r.branch_id
+
+--- a/tailwind.config.ts
++++ b/tailwind.config.ts
+@@ -17,8 +17,10 @@
+         fix2: "#eff6ff",
+         wave: "#3cb4e0",
+       },
++      // Latin letters come from a clean UI font; Ethiopic letters fall through (per glyph) to Noto Sans Ethiopic.
+       fontFamily: {
+-        ethiopic: ["Noto Sans Ethiopic", "Nyala", "Abyssinica SIL", "sans-serif"],
++        sans: ['"Segoe UI"', "system-ui", "Roboto", '"Helvetica Neue"', "Arial", "var(--font-ethiopic)", '"Noto Sans Ethiopic"', "Nyala", '"Abyssinica SIL"', "sans-serif"],
++        ethiopic: ['"Segoe UI"', "system-ui", "Roboto", '"Helvetica Neue"', "Arial", "var(--font-ethiopic)", '"Noto Sans Ethiopic"', "Nyala", '"Abyssinica SIL"', "sans-serif"],
+       },
+     },
+   },

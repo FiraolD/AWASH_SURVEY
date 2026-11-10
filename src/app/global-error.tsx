@@ -1,5 +1,7 @@
 "use client";
 
+import "./globals.css"; // global-error replaces the root layout, so it must load the styles itself
+
 export default function GlobalError({
   error,
   reset,
@@ -34,7 +36,7 @@ export default function GlobalError({
             </p>
             <button
               onClick={reset}
-              className="mt-6 w-full rounded-lg bg-teal-700 px-4 py-2.5 font-medium text-white hover:bg-teal-800"
+              className="mt-6 w-full rounded-lg bg-[#005baa] px-4 py-2.5 font-medium text-white hover:bg-[#00417e]"
             >
               Try again
             </button>

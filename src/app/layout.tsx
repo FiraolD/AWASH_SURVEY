@@ -17,6 +17,7 @@ const ethiopic = localFont({
     },
   ],
   variable: "--font-ethiopic",
+  display: "swap",
 });
 
 export const metadata = {
@@ -27,7 +28,7 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="am" suppressHydrationWarning>
-      <body className={`${ethiopic.variable} font-ethiopic`}>
+      <body className={`${ethiopic.variable} font-sans`}>
         <Providers>
           {children}
         </Providers>

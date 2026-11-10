@@ -10,7 +10,6 @@ import { db } from "~db/index";
 import { auditLog } from "~db/schema";
 import { requireRole } from "@/server/permissions";
 import { env } from "@/lib/env";
-import { readdir } from "fs/promises";
 //import { join } from "path";
 
 /* ------------------------------------------------------------------ */
@@ -199,7 +198,10 @@ export type MigrationFile = {
 export async function listMigrationStatus(): Promise<MigrationFile[]> {
   if (!env.ALLOW_SQL_CONSOLE) throw new Error("SQL console is disabled");
   await requireRole("admin");
+  return readMigrationStatus();
+}
 
+async function readMigrationStatus(): Promise<MigrationFile[]> {
   const dir = join(process.cwd(), "db", "migrations");
   const files = existsSync(dir)
     ? readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()
@@ -222,29 +224,9 @@ export async function listMigrationStatus(): Promise<MigrationFile[]> {
   }));
 }
 
-export type MigrationFile = {
-  name: string;
-  applied: boolean;
-  appliedAt: string | null;
-};
-
 export async function listMigrations(): Promise<MigrationFile[]> {
-  try {
-    const dir = join(process.cwd(), "db/migrations");
-    const files = await readdir(dir);
-    
-    // Filter and sort .sql files
-    const sqlFiles = files.filter((f) => f.endsWith(".sql")).sort();
-    
-    return sqlFiles.map((name) => ({
-      name,
-      applied: false, // Since we don't track applied status here, we default to false
-      appliedAt: null,
-    }));
-  } catch (error) {
-    console.error("Failed to read migrations folder", error);
-    return [];
-  }
+  await requireRole("admin");
+  return readMigrationStatus();
 }
 
 export async function runPendingMigration(name: string) {

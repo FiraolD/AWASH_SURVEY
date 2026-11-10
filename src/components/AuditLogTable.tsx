@@ -2,6 +2,7 @@
 
 import { Fragment, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { formatDateTime } from "@/lib/format";
 
 type Row = {
   id: number;
@@ -75,7 +76,7 @@ export function AuditLogTable({
               <Fragment key={r.id}>
                 <tr className="border-t border-[color:var(--line)] hover:bg-[color:var(--bg)]/50">
                   <td className="px-4 py-3 align-top tabular-nums text-xs text-[color:var(--mut)]">
-                    {new Date(r.at).toLocaleString(locale === "am" ? "am-ET" : "en-GB")}
+                    {formatDateTime(r.at)}
                   </td>
                   <td className="px-4 py-3 align-top">
                     <div className="font-medium">

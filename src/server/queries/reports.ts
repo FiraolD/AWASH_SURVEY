@@ -40,11 +40,13 @@ export async function listReportsPaged(opts: {
     status: "draft" | "finalized" | "void";
     coverage: "comprehensive" | "third_party" | null;
     branch_code: string;
+    branch_names: Record<string, string> | null;
     surveyor_name: string | null;
   }>(sql`
     select 
       r.id, r.report_no, r.report_date, r.plate_no, r.chassis_no, r.status, r.coverage,
       b.code as branch_code,
+      b.names as branch_names,
       u.full_name as surveyor_name
     from survey_reports r
     join branches b on b.id = r.branch_id

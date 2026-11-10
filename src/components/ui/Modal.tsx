@@ -33,7 +33,10 @@ export function Modal({
       onClick={onClose}
     >
       <div
-        className={`w-full ${width} anim-pop rounded-[var(--r-lg)] bg-white shadow-[var(--shadow-lg)]`}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className={`flex max-h-[calc(100dvh_-_2rem)] w-full flex-col ${width} anim-pop rounded-[var(--r-lg)] bg-white shadow-[var(--shadow-lg)]`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-[color:var(--line)] px-5 py-3.5">
@@ -48,7 +51,7 @@ export function Modal({
             </svg>
           </button>
         </div>
-        <div className="px-5 py-4">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
         {footer && (
           <div className="flex justify-end gap-2 border-t border-[color:var(--line)] px-5 py-3">
             {footer}

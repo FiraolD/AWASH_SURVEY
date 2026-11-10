@@ -51,11 +51,15 @@ export function ToastHost() {
   };
 
   return (
-    <div className="pointer-events-none fixed bottom-4 right-4 z-[100] flex flex-col gap-2">
+    <div
+      role="status"
+      aria-live="polite"
+      className="pointer-events-none fixed inset-x-3 bottom-3 z-[100] flex flex-col items-end gap-2 sm:inset-x-auto sm:bottom-4 sm:right-4"
+    >
       {items.map((t) => (
         <div
           key={t.id}
-          className={`anim-slide pointer-events-auto flex max-w-sm items-start gap-3 rounded-[var(--r)] border-l-4 ${color[t.kind]} px-4 py-3 shadow-[var(--shadow-lg)]`}
+          className={`anim-slide pointer-events-auto flex w-full max-w-sm items-start sm:w-auto gap-3 rounded-[var(--r)] border-l-4 ${color[t.kind]} px-4 py-3 shadow-[var(--shadow-lg)]`}
         >
           <span className={`flex h-6 w-6 flex-none items-center justify-center rounded-full text-xs font-bold ${iconBg[t.kind]}`}>
             {icon[t.kind]}

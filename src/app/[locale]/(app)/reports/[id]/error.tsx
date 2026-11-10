@@ -1,5 +1,7 @@
 "use client";
 
+import { usePathname } from "next/navigation";
+
 export default function ReportError({
   error,
   reset,
@@ -7,6 +9,7 @@ export default function ReportError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const locale = usePathname()?.split("/")[1] === "en" ? "en" : "am";
   return (
     <div className="rounded-xl border border-red-200 bg-red-50 p-6">
       <h2 className="text-base font-semibold text-red-900">
@@ -24,7 +27,7 @@ export default function ReportError({
           Try again
         </button>
         <a
-          href="/am/reports"
+          href={`/${locale}/reports`}
           className="rounded-md px-3 py-1.5 text-sm text-red-700 hover:underline"
         >
           Back to reports

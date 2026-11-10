@@ -19,6 +19,7 @@ export default async function ReportPage({ params }: { params: Promise<{ locale:
   ]);
 
   if (!data) return notFound();
+  if (session.user.role === "surveyor" && data.report.surveyorId !== session.user.id) return notFound();
 
   const messages = getMessages(locale as Locale);
   const readonly = data.report.status !== "draft";
@@ -28,7 +29,7 @@ export default async function ReportPage({ params }: { params: Promise<{ locale:
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">
-            {data.report.reportNo ?? "Draft Report"}
+            {data.report.reportNo ?? (locale === "am" ? "ረቂቅ ሪፖርት" : "Draft Report")}
           </h1>
           <p className="text-sm text-[color:var(--mut)]">
             {data.branchName || "Awash Insurance"}

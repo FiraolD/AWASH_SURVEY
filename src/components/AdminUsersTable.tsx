@@ -1,5 +1,6 @@
 "use client";
 
+import { unwrap } from "@/lib/action-result";
 import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/Button";
@@ -77,7 +78,7 @@ export function AdminUsersTable({
     } else {
       start(async () => {
         try {
-          await setUserActive(row.id, true);
+          unwrap(await setUserActive(row.id, true));
           toast.success(tr("ተጠቃሚው እንደገና ነቅቷል", "User reactivated"));
           router.refresh();
         } catch (err) {
@@ -90,7 +91,7 @@ export function AdminUsersTable({
   const doDeactivate = (row: UserRow) => {
     start(async () => {
       try {
-        await setUserActive(row.id, false);
+        unwrap(await setUserActive(row.id, false));
         toast.success(tr("ተጠቃሚው ጠፍቷል", "User deactivated"));
         router.refresh();
       } catch (err) {
@@ -333,10 +334,10 @@ function UserFormModal({
     setSaving(true);
     try {
       if (isEdit) {
-        await updateUser({ id: initial!.id, username, email, fullName, phone, role, branchId: Number(branchId), preferredLang });
+        unwrap(await updateUser({ id: initial!.id, username, email, fullName, phone, role, branchId: Number(branchId), preferredLang }));
         toast.success("User updated");
       } else {
-        await createUser({ username, email, fullName, phone, role, branchId: Number(branchId), preferredLang });
+        unwrap(await createUser({ username, email, fullName, phone, role, branchId: Number(branchId), preferredLang }));
         toast.success("User created. Default password is Insurance123");
       }
       onSaved();
@@ -408,7 +409,7 @@ function ResetPasswordModal({ user, onClose, locale, onSaved }: { user: UserRow 
     if (!user) return;
     setSaving(true);
     try {
-      await resetUserPassword(user.id);
+      unwrap(await resetUserPassword(user.id));
       toast.success(tr("የይለፍ ቃል ወደ Insurance123 ተቀይሯል", "Password reset to Insurance123"));
       onSaved();
     } catch (err) {

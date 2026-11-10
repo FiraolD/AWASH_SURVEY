@@ -13,6 +13,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Messages } from "@/lib/i18n";
 import type { ReportItem, SurveyReport } from "~db/schema";
+import { formatDate } from "@/lib/format";
 
 const FONT_REGULAR = join(
   process.cwd(),
@@ -371,7 +372,7 @@ export function SurveyReportPdf({
                 />
               </View>
               <View style={S.col}>
-                <Field label="ቀን" value={report.reportDate} />
+                <Field label="ቀን" value={formatDate(report.reportDate)} />
                 {/* FIX: Corrected typo ቅርጣጫር -> ቅርንጫፍ and use branchName */}
                 <Field label="ቅርንጫፍ" value={branchName || String(report.branchId)} />
                 <Field label="የሞተር ቁጥር" value={report.engineNo} />

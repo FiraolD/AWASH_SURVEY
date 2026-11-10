@@ -1,5 +1,6 @@
 import type { Messages } from "@/lib/i18n";
 import type { ReportItem, SurveyReport } from "~db/schema";
+import { formatDate } from "@/lib/format";
 
 const ROWS = 22;
 
@@ -85,7 +86,7 @@ export function PrintSheet({
                 />
               </div>
               <div className="flex flex-col gap-[1mm]">
-                <PrintField label="ቀን" value={report.reportDate} />
+                <PrintField label="ቀን" value={formatDate(report.reportDate)} />
                 {/* FIX: Use branchName here */}
                 <PrintField label="ቅርንጫፍ" value={branchName || String(report.branchId)} />
                 <PrintField label="የሞተር ቁጥር" value={report.engineNo} />

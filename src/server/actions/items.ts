@@ -7,7 +7,13 @@ import { requireUser } from "@/server/permissions";
 import { withActor, type Tx } from "@/server/audit";
 import { newItemSchema } from "@/lib/zod";
 
-async function ensureEditable(tx: Tx, reportId: string) {
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function ensureEditable(
+  tx: Tx,
+  reportId: string,
+  user: { id: string; role: string },
+) {
   const [r] = await tx
     .select({
       status: surveyReports.status,
@@ -17,6 +23,8 @@ async function ensureEditable(tx: Tx, reportId: string) {
     .where(eq(surveyReports.id, reportId))
     .limit(1);
   if (!r) throw new Error("Report not found");
+  // surveyors may only touch their own reports
+  if (user.role === "surveyor" && r.surveyorId !== user.id) throw new Error("Forbidden");
   if (r.status !== "draft") throw new Error("Report is not editable");
   return r;
 }
@@ -49,7 +57,7 @@ export async function addItem(input: unknown) {
   const row = await withActor(
     { id: user.id, email: user.email },
     async (tx) => {
-      const r = await ensureEditable(tx, data.reportId);
+      const r = await ensureEditable(tx, data.reportId, user);
       if (r.surveyorId !== user.id && user.role === "surveyor") {
         throw new Error("Forbidden");
       }
@@ -103,7 +111,7 @@ export async function removeItem(itemId: string) {
         .limit(1);
       if (!row) return { ok: true as const, reportId: null as string | null };
 
-      await ensureEditable(tx, row.reportId);
+      await ensureEditable(tx, row.reportId, user);
       await tx.delete(reportItems).where(eq(reportItems.id, itemId));
       await renumber(tx, row.reportId, row.action);
       return { ok: true as const, reportId: row.reportId };
@@ -126,7 +134,7 @@ export async function toggleRecovery(itemId: string, value: boolean) {
         .where(eq(reportItems.id, itemId))
         .limit(1);
       if (!row) throw new Error("Not found");
-      await ensureEditable(tx, row.reportId);
+      await ensureEditable(tx, row.reportId, user);
       if (row.action !== "replace") {
         throw new Error("Recovery only applies to replaced items");
       }
@@ -162,7 +170,7 @@ export async function updateItemDetails(
         .where(eq(reportItems.id, itemId))
         .limit(1);
       if (!row) throw new Error("Item not found");
-      await ensureEditable(tx, row.reportId);
+      await ensureEditable(tx, row.reportId, user);
 
       if (row.action === "replace" && !values.condition) {
         throw new Error("Condition is required for replacement items");
@@ -208,7 +216,7 @@ export async function moveItem(
       if (!row) throw new Error("Not found");
       if (row.action === to)
         return { ok: true as const, reportId: row.reportId };
-      await ensureEditable(tx, row.reportId);
+      await ensureEditable(tx, row.reportId, user);
 
       const [{ nextPos }] = await tx
         .select({
@@ -260,9 +268,12 @@ export async function bulkDeleteItems(ids: string[]) {
         .from(reportItems)
         .where(eq(reportItems.id, ids[0]))
         .limit(1);
-      if (first) await ensureEditable(tx, first.reportId);
+      if (!first) return { ok: true as const, reportId: null as string | null };
+      await ensureEditable(tx, first.reportId, user);
 
-      await tx.delete(reportItems).where(inArray(reportItems.id, ids));
+      await tx
+        .delete(reportItems)
+        .where(and(inArray(reportItems.id, ids), eq(reportItems.reportId, first.reportId)));
 
       if (first) {
         await renumber(tx, first.reportId, "replace");
@@ -297,7 +308,7 @@ export async function bulkMoveItems(
         .where(eq(reportItems.id, ids[0]))
         .limit(1);
       if (!first) return { ok: true as const, reportId: null as string | null };
-      await ensureEditable(tx, first.reportId);
+      await ensureEditable(tx, first.reportId, user);
 
       const [{ nextPos }] = await tx
         .select({
@@ -314,7 +325,7 @@ export async function bulkMoveItems(
       const rows = await tx
         .select()
         .from(reportItems)
-        .where(inArray(reportItems.id, ids));
+        .where(and(inArray(reportItems.id, ids), eq(reportItems.reportId, first.reportId)));
 
       let pos = nextPos;
       for (const r of rows) {
@@ -359,7 +370,7 @@ export async function bulkSetRecovery(ids: string[], value: boolean) {
         .where(eq(reportItems.id, ids[0]))
         .limit(1);
       if (!first) return { ok: true as const, reportId: null as string | null };
-      await ensureEditable(tx, first.reportId);
+      await ensureEditable(tx, first.reportId, user);
 
       await tx
         .update(reportItems)
@@ -367,6 +378,7 @@ export async function bulkSetRecovery(ids: string[], value: boolean) {
         .where(
           and(
             inArray(reportItems.id, ids),
+            eq(reportItems.reportId, first.reportId),
             eq(reportItems.action, "replace"),
           ),
         );
@@ -389,18 +401,18 @@ export async function reorderItems(
   const result = await withActor(
     { id: user.id, email: user.email },
     async (tx) => {
-      await ensureEditable(tx, reportId);
+      await ensureEditable(tx, reportId, user);
       for (let i = 0; i < orderedIds.length; i++) {
         await tx
           .update(reportItems)
           .set({ position: 10000 + i })
-          .where(eq(reportItems.id, orderedIds[i]));
+          .where(and(eq(reportItems.id, orderedIds[i]), eq(reportItems.reportId, reportId)));
       }
       for (let i = 0; i < orderedIds.length; i++) {
         await tx
           .update(reportItems)
           .set({ position: i + 1 })
-          .where(eq(reportItems.id, orderedIds[i]));
+          .where(and(eq(reportItems.id, orderedIds[i]), eq(reportItems.reportId, reportId)));
       }
       return { ok: true as const };
     },
@@ -430,12 +442,13 @@ export async function restoreItems(
   const result = await withActor(
     { id: user.id, email: user.email },
     async (tx) => {
-      await ensureEditable(tx, reportId);
+      await ensureEditable(tx, reportId, user);
       await tx.delete(reportItems).where(eq(reportItems.reportId, reportId));
 
       if (snapshot.length > 0) {
         await tx.insert(reportItems).values(
           snapshot.map((s) => ({
+            ...(UUID_RE.test(s.id) ? { id: s.id } : {}),
             reportId,
             action: s.action,
             position: s.position,

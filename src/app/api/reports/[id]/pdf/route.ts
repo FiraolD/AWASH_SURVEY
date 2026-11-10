@@ -20,6 +20,9 @@ export async function GET(
   if (!data) {
     return new Response("Not found", { status: 404 });
   }
+  if (session.user.role === "surveyor" && data.report.surveyorId !== session.user.id) {
+    return new Response("Forbidden", { status: 403 });
+  }
 
   const lang = (data.report.printLang ?? "am") as Locale;
   const messages = getMessages(lang);

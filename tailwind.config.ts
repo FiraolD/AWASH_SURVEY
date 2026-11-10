@@ -17,8 +17,10 @@ export default {
         fix2: "#eff6ff",
         wave: "#3cb4e0",
       },
+      // Latin letters come from a clean UI font; Ethiopic letters fall through (per glyph) to Noto Sans Ethiopic.
       fontFamily: {
-        ethiopic: ["Noto Sans Ethiopic", "Nyala", "Abyssinica SIL", "sans-serif"],
+        sans: ['"Segoe UI"', "system-ui", "Roboto", '"Helvetica Neue"', "Arial", "var(--font-ethiopic)", '"Noto Sans Ethiopic"', "Nyala", '"Abyssinica SIL"', "sans-serif"],
+        ethiopic: ['"Segoe UI"', "system-ui", "Roboto", '"Helvetica Neue"', "Arial", "var(--font-ethiopic)", '"Noto Sans Ethiopic"', "Nyala", '"Abyssinica SIL"', "sans-serif"],
       },
     },
   },

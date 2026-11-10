@@ -1,6 +1,6 @@
 import "server-only";
 import { auth } from "./auth";
-import { cookies } from "next/headers";
+import { isConsoleAuthed } from "./console-auth";
 
 export type Role = "admin" | "supervisor" | "surveyor";
 
@@ -37,22 +37,20 @@ export function can(role: Role | string | undefined, cap: Capability): boolean {
 
 export async function requireUser() {
   const session = await auth();
-  
+
   if (!session?.user) {
-    const cookieStore = await cookies();
-    const isConsoleAuth = cookieStore.get("console_auth")?.value === "true";
-    
-    if (isConsoleAuth) {
-      return { 
-        id: "00000000-0000-0000-0000-000000000000", 
-        role: "admin", 
-        name: "Console Admin" 
-      } as any; 
+    // The /console page has its own password and a SIGNED cookie (see console-auth.ts).
+    if (await isConsoleAuthed()) {
+      return {
+        id: "00000000-0000-0000-0000-000000000000",
+        email: "console@system.local",
+        role: "admin",
+        name: "Console Admin",
+      } as any;
     }
-    
     throw new Error("UNAUTHORIZED");
   }
-  
+
   return session.user;
 }
 

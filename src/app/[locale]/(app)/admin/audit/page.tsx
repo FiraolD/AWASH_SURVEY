@@ -2,7 +2,7 @@ import { requireRole } from "@/server/permissions";
 import { listAuditEntries } from "@/server/queries/audit";
 import { AuditLogTable } from "@/components/AuditLogTable";
 import { Pagination } from "@/components/ui/Pagination";
-import { getMessages, getLocale } from "@/lib/i18n";
+import { getMessages } from "@/lib/i18n";
 
 export default async function AuditPage({
   params,
@@ -19,7 +19,7 @@ export default async function AuditPage({
   const { locale } = await params;
   await requireRole("admin");
   const sp = await searchParams;
-  const messages = getMessages(await getLocale());
+  const messages = getMessages(locale);
 
   const { rows, total, page, pageSize } = await listAuditEntries({
     entity: sp.entity,

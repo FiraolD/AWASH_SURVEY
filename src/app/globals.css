@@ -65,10 +65,6 @@ input, button, select, textarea {
   font-feature-settings: "kern", "cv11";
 }
 
-/* Optional: Add a specific rule to ensure the Ethiopic font is prioritized */
-textarea, input[type="text"], input[type="email"] {
-  font-family: var(--font-ethiopic), sans-serif;
-}
 
 /* Focus ring – consistent across buttons, inputs, links */
 button:focus-visible,
@@ -120,4 +116,20 @@ a[role="button"]:active:not(:disabled) {
 @media print {
   .no-print { display: none !important; }
   .page { box-shadow: none !important; margin: 0 !important; }
+}
+
+/* ---------- Phones ---------- */
+/* iOS Safari zooms the page when a focused field is < 16px */
+@media (max-width: 640px) {
+  input, select, textarea { font-size: 16px !important; }
+}
+html { -webkit-text-size-adjust: 100%; }
+
+/* ---------- Accessibility ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
 }

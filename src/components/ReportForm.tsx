@@ -101,13 +101,25 @@ export function ReportForm({
       setHits([]);
       return;
     }
+    // Abort the previous request so a slow, older response can never overwrite a newer one.
+    const ctl = new AbortController();
     const t = setTimeout(async () => {
-      const res = await fetch(`/api/parts/search?q=${encodeURIComponent(q)}&limit=40`);
-      const json = await res.json();
-      setHits(json.items ?? []);
-      setActive(0);
+      try {
+        const res = await fetch(`/api/parts/search?q=${encodeURIComponent(q.trim())}&limit=40`, {
+          signal: ctl.signal,
+        });
+        if (!res.ok) return;
+        const json = await res.json();
+        setHits(json.items ?? []);
+        setActive(0);
+      } catch {
+        /* aborted or offline – ignore */
+      }
     }, 140);
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(t);
+      ctl.abort();
+    };
   }, [q]);
 
   const [conditionFor, setConditionFor] = useState<
@@ -488,7 +500,7 @@ export function ReportForm({
     if (!header.chassisNo.trim()) e.chassisNo = req;
     if (!header.model.trim()) e.model = req;
     setHeaderErrors(e);
-    return Object.keys(e).length === 0;
+    return Object.keys(e).length  === 0;
   };
 
   const doSaveHeader = () => {
