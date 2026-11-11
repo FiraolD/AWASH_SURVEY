@@ -22,7 +22,7 @@
     
     ENV NODE_ENV=production
     ENV NEXT_TELEMETRY_DISABLED=1
-    ENV PORT=3099
+    ENV PORT=3090
     ENV HOSTNAME=0.0.0.0
     
     RUN addgroup --system --gid 1001 nodejs \
@@ -39,10 +39,10 @@
     COPY --from=builder /app/node_modules/tsx ./node_modules/tsx
     
     USER nextjs
-    EXPOSE 3099
+    EXPOSE 3090
     
     # Container health check — pings the login page
     HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-      CMD wget -qO- http://127.0.0.1:3099/am/login >/dev/null 2>&1 || exit 1
+      CMD wget -qO- http://127.0.0.1:3090/am/login >/dev/null 2>&1 || exit 1
     
     CMD ["node", "server.js"]
