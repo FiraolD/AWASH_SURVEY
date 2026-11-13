@@ -291,18 +291,17 @@ const S = StyleSheet.create({
   },
   stampWrap: {
     position: "absolute",
-    top: "100%",         
-    marginTop: "2mm",    
-    right: "5mm",        
-    width: "45mm",
-    height: "45mm",
+    bottom: "10mm",
+    right: "5mm",
+    width: "50mm",
+    height: "50mm",
     transform: "rotate(-12deg)",
     opacity: 0.85,
     zIndex: 10,
   },
   stampImage: {
-    width: "45mm",
-    height: "45mm",
+    width: "50mm",
+    height: "50mm",
     objectFit: "contain",
   },
 });
@@ -325,10 +324,11 @@ export function SurveyReportPdf({
   const replaces = items.filter((i) => i.action === "replace");
   const repairs = items.filter((i) => i.action === "repair");
   
+  // Total number of rows is the maximum length between the two lists
   const totalItems = Math.max(replaces.length, repairs.length);
   
-  // Create an array of integers representing the row index [0, 1, 2, ... totalItems]
-  // to map over, letting React-PDF handle the automatic pagination.
+  // Create an array to map over. React-PDF handles the automatic page breaks
+  // because of `wrap={false}` on each row.
   const rows = Array.from({ length: Math.max(1, totalItems) }).map((_, i) => i);
 
   const recNums = replaces
@@ -375,65 +375,55 @@ export function SurveyReportPdf({
           </View>
         </View>
 
-        {/* 2. Table Wrapper (contains table and stamp) */}
-        <View style={S.tableWrapper}>
-          <View style={S.table}>
-            <View style={S.thead} fixed>
-              <Text style={[S.th, S.thNo]}>ተ.ቁ</Text>
-              <Text style={[S.th, S.thPartBordered]}>የሚለወጡ እቃዎች ዝርዝር</Text>
-              <Text style={[S.th, S.thNo]}>ተ.ቁ</Text>
-              <Text style={[S.th, S.thPart]}>የሚስተካከሉ እቃዎች ዝርዝር</Text>
-            </View>
-
-            {/* Map over all rows. wrap={false} ensures it doesn't break a single row across pages. */}
-            {rows.map((i) => {
-              const a = replaces[i];
-              const b = repairs[i];
-              const aMeta = conditionMeta(a);
-              const bMeta = conditionMeta(b);
-              return (
-                <View key={i} style={S.tbodyRow} wrap={false}>
-                  <View style={S.tdNo}>
-                    <Text>{a ? i + 1 : ""}</Text>
-                  </View>
-                  <View style={S.tdPartBordered}>
-                    {a && (
-                      <>
-                        <View style={S.nameRow}>
-                          <Text style={S.tdAm}>{a.names.am}</Text>
-                          <Text style={S.tdEn}> / {a.names.en}</Text>
-                        </View>
-                        {a.remark && <Text style={S.tdRemark}>{a.remark}</Text>}
-                        {aMeta ? <Text style={S.tdMeta}>{aMeta}</Text> : null}
-                      </>
-                    )}
-                  </View>
-                  <View style={S.tdNoMid}>
-                    <Text>{b ? i + 1 : ""}</Text>
-                  </View>
-                  <View style={S.tdPart}>
-                    {b && (
-                      <>
-                        <View style={S.nameRow}>
-                          <Text style={S.tdAm}>{b.names.am}</Text>
-                          <Text style={S.tdEn}> / {b.names.en}</Text>
-                        </View>
-                        {b.remark && <Text style={S.tdRemark}>{b.remark}</Text>}
-                        {bMeta ? <Text style={S.tdMeta}>{bMeta}</Text> : null}
-                      </>
-                    )}
-                  </View>
-                </View>
-              );
-            })}
+        {/* 2. Table */}
+        <View style={S.table}>
+          <View style={S.thead} fixed>
+            <Text style={[S.th, S.thNo]}>ተ.ቁ</Text>
+            <Text style={[S.th, S.thPartBordered]}>የሚለወጡ እቃዎች ዝርዝር</Text>
+            <Text style={[S.th, S.thNo]}>ተ.ቁ</Text>
+            <Text style={[S.th, S.thPart]}>የሚስተካከሉ እቃዎች ዝርዝር</Text>
           </View>
 
-          {/* Stamp attached to the bottom of the table */}
-          {isFinalized && (
-            <View style={S.stampWrap}>
-              <Image src={STAMP_DATA_URL} style={S.stampImage} />
-            </View>
-          )}
+          {rows.map((i) => {
+            const a = replaces[i];
+            const b = repairs[i];
+            const aMeta = conditionMeta(a);
+            const bMeta = conditionMeta(b);
+            return (
+              <View key={i} style={S.tbodyRow} wrap={false}>
+                <View style={S.tdNo}>
+                  <Text>{a ? i + 1 : ""}</Text>
+                </View>
+                <View style={S.tdPartBordered}>
+                  {a && (
+                    <>
+                      <View style={S.nameRow}>
+                        <Text style={S.tdAm}>{a.names.am}</Text>
+                        <Text style={S.tdEn}> / {a.names.en}</Text>
+                      </View>
+                      {a.remark && <Text style={S.tdRemark}>{a.remark}</Text>}
+                      {aMeta ? <Text style={S.tdMeta}>{aMeta}</Text> : null}
+                    </>
+                  )}
+                </View>
+                <View style={S.tdNoMid}>
+                  <Text>{b ? i + 1 : ""}</Text>
+                </View>
+                <View style={S.tdPart}>
+                  {b && (
+                    <>
+                      <View style={S.nameRow}>
+                        <Text style={S.tdAm}>{b.names.am}</Text>
+                        <Text style={S.tdEn}> / {b.names.en}</Text>
+                      </View>
+                      {b.remark && <Text style={S.tdRemark}>{b.remark}</Text>}
+                      {bMeta ? <Text style={S.tdMeta}>{bMeta}</Text> : null}
+                    </>
+                  )}
+                </View>
+              </View>
+            );
+          })}
         </View>
 
         {/* 3. Notice (Last page only) */}
@@ -454,6 +444,13 @@ export function SurveyReportPdf({
           </View>
           <Note n={5}>{messages.notes.n5}</Note>
         </View>
+
+        {/* 4. Stamp (Fixed on every page) */}
+        {isFinalized && (
+          <View fixed style={S.stampWrap}>
+            <Image src={STAMP_DATA_URL} style={S.stampImage} />
+          </View>
+        )}
 
         <Text
           style={S.pageNo}
