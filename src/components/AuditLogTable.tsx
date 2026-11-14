@@ -1,7 +1,9 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import Link from "next/link";
+import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { describeAudit, fieldLabel, fmtValue, type AuditCtx } from "@/lib/audit-describe";
 import { formatDateTime } from "@/lib/format";
 
 type Row = {
@@ -15,15 +17,10 @@ type Row = {
   changes: unknown;
   diff: Record<string, { from: unknown; to: unknown }> | null;
   row_pk: Record<string, string> | null;
+  ctx?: AuditCtx;
 };
 
-export function AuditLogTable({
-  rows,
-  locale,
-}: {
-  rows: Row[];
-  locale: string;
-}) {
+export function AuditLogTable({ rows, locale }: { rows: Row[]; locale: string }) {
   const [open, setOpen] = useState<Set<number>>(new Set());
   const tr = (am: string, en: string) => (locale === "am" ? am : en);
 
@@ -34,132 +31,110 @@ export function AuditLogTable({
     setOpen(next);
   };
 
-  const actionStyle: Record<string, string> = {
-    INSERT: "bg-[color:var(--success-2)] text-[color:var(--success)]",
-    UPDATE: "bg-[color:var(--acc-2)] text-[color:var(--acc)]",
-    DELETE: "bg-[color:var(--rep-2)] text-[color:var(--rep)]",
+  const badge = (action: string): [string, string] => {
+    switch (action) {
+      case "INSERT": return [tr("ተፈጠረ", "Created"), "bg-[color:var(--success-2)] text-[color:var(--success)]"];
+      case "UPDATE": return [tr("ተስተካክሏል", "Updated"), "bg-[color:var(--acc-2)] text-[color:var(--acc)]"];
+      case "DELETE": return [tr("ተሰርዟል", "Deleted"), "bg-[color:var(--rep-2)] text-[color:var(--rep)]"];
+      case "EXECUTE": return [tr("ተፈጽሟል", "Executed"), "bg-[color:var(--warn-2)] text-[color:var(--warn)]"];
+      case "APPLIED": return [tr("ተጠቅሟል", "Applied"), "bg-[color:var(--success-2)] text-[color:var(--success)]"];
+      case "EXECUTE_FAILED":
+      case "FAILED": return [tr("አልተሳካም", "Failed"), "bg-[color:var(--rep-2)] text-[color:var(--rep)]"];
+      default: return [action, "bg-[color:var(--bg)] text-[color:var(--mut)]"];
+    }
   };
 
-  const actionLabel: Record<string, string> = {
-    INSERT: tr("ተፈጠረ", "Created"),
-    UPDATE: tr("ተስተካክሏል", "Updated"),
-    DELETE: tr("ተሰርዟል", "Deleted"),
-  };
+  if (!rows || rows.length === 0) {
+    return (
+      <div className="rounded-[var(--r-lg)] border border-[color:var(--line)] bg-white px-4 py-12 text-center text-[color:var(--mut)] shadow-[var(--shadow-sm)]">
+        {tr("ምንም የኦዲት መዝገብ የለም", "No audit entries")}
+      </div>
+    );
+  }
 
   return (
     <div className="overflow-hidden rounded-[var(--r-lg)] border border-[color:var(--line)] bg-white shadow-[var(--shadow-sm)]">
-      <table className="w-full text-sm">
-        <thead className="bg-[color:var(--bg)] text-left text-xs uppercase tracking-wide text-[color:var(--mut)]">
-          <tr>
-            <th className="px-4 py-3">{tr("ጊዜ", "When")}</th>
-            <th className="px-4 py-3">{tr("ተጠቃሚ", "Who")}</th>
-            <th className="px-4 py-3">{tr("እርምጃ", "Action")}</th>
-            <th className="px-4 py-3">{tr("አካል", "Entity")}</th>
-            <th className="w-16 px-4 py-3"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {(!rows || rows.length === 0) && (
-            <tr>
-              <td colSpan={5} className="px-4 py-12 text-center text-[color:var(--mut)]">
-                {tr("ምንም የኦዲት መዝገብ የለም", "No audit entries")}
-              </td>
-            </tr>
-          )}
+      <div className="hidden bg-[color:var(--bg)] px-4 py-3 text-xs font-medium uppercase tracking-wide text-[color:var(--mut)] md:grid md:grid-cols-[9.5rem_13rem_1fr_4.5rem] md:gap-4">
+        <div>{tr("ጊዜ", "When")}</div>
+        <div>{tr("ተጠቃሚ", "Who")}</div>
+        <div>{tr("ምን ተደረገ", "What happened")}</div>
+        <div />
+      </div>
 
-          {rows?.map((r) => {
-            const isOpen = open.has(r.id);
-            // Safe fallback: if r.diff is null, use empty object
-            const diffKeys = r.diff ? Object.keys(r.diff) : [];
+      {rows.map((r) => {
+        const isOpen = open.has(r.id);
+        const { text, reportId, reportNo } = describeAudit(r, locale);
+        const [label, style] = badge(r.action);
+        const diffKeys = r.diff ? Object.keys(r.diff).filter((k) => k !== "updated_at") : [];
 
-            return (
-              <Fragment key={r.id}>
-                <tr className="border-t border-[color:var(--line)] hover:bg-[color:var(--bg)]/50">
-                  <td className="px-4 py-3 align-top tabular-nums text-xs text-[color:var(--mut)]">
-                    {formatDateTime(r.at)}
-                  </td>
-                  <td className="px-4 py-3 align-top">
-                    <div className="font-medium">
-                      {r.actor_email ?? tr("ሲስተም", "System")}
-                    </div>
-                    {r.actor_id && (
-                      <div className="font-mono text-[10px] text-[color:var(--mut)]">
-                        {r.actor_id.slice(0, 8)}…
-                      </div>
+        return (
+          <div key={r.id} className="border-t border-[color:var(--line)] px-4 py-3 first:border-t-0 hover:bg-[color:var(--bg)]/40">
+            <div className="grid gap-1 md:grid-cols-[9.5rem_13rem_1fr_4.5rem] md:items-start md:gap-4">
+              <div className="text-xs tabular-nums text-[color:var(--mut)]">{formatDateTime(r.at)}</div>
+              <div className="min-w-0 truncate text-sm font-medium">{r.actor_email ?? tr("ሲስተም", "System")}</div>
+              <div className="min-w-0 text-sm">
+                <span className={"mr-2 inline-block rounded-full px-2 py-0.5 text-[11px] font-medium " + style}>{label}</span>
+                <span className="break-words">{text}</span>
+                {reportNo && (
+                  <>
+                    {" "}
+                    {reportId ? (
+                      <Link
+                        href={`/${locale}/reports/${reportId}`}
+                        className="whitespace-nowrap rounded-md bg-[color:var(--acc-2)] px-1.5 py-0.5 font-mono text-xs font-medium text-[color:var(--acc)] hover:underline"
+                      >
+                        {reportNo}
+                      </Link>
+                    ) : (
+                      <span className="whitespace-nowrap rounded-md bg-[color:var(--bg)] px-1.5 py-0.5 font-mono text-xs text-[color:var(--mut)]">{reportNo}</span>
                     )}
-                  </td>
-                  <td className="px-4 py-3 align-top">
-                    <span className={"rounded-full px-2 py-0.5 text-xs font-medium " + (actionStyle[r.action] ?? "")}>
-                      {actionLabel[r.action] ?? r.action}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 align-top">
-                    <div className="font-mono text-xs">{r.entity}</div>
-                    <div className="font-mono text-[10px] text-[color:var(--mut)]">
-                      {r.entity_id.slice(0, 8)}…
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 align-top text-right">
-                    <Button variant="ghost" size="xs" onClick={() => toggle(r.id)}>
-                      {isOpen ? "▲" : "▼"}{" "}
-                      {r.action === "UPDATE" && diffKeys.length > 0 ? `(${diffKeys.length})` : ""}
-                    </Button>
-                  </td>
-                </tr>
-
-                {isOpen && (
-                  <tr className="bg-[color:var(--bg)]">
-                    <td colSpan={5} className="px-4 py-4">
-                      {r.action === "UPDATE" && r.diff && diffKeys.length > 0 ? (
-                        <div className="space-y-2">
-                          <div className="mb-2 text-xs font-medium uppercase tracking-wide text-[color:var(--mut)]">
-                            {tr("የተቀየሩ መስኮች", "Changed fields")}
-                          </div>
-                          <table className="w-full text-xs">
-                            <thead>
-                              <tr className="text-left text-[10px] uppercase text-[color:var(--mut)]">
-                                <th className="w-48 pb-1">{tr("መስክ", "Field")}</th>
-                                <th className="pb-1">{tr("ከ", "From")}</th>
-                                <th className="pb-1">{tr("ወደ", "To")}</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {/* SAFE FALLBACK ADDED HERE */}
-                              {Object.entries(r.diff || {}).map(([field, { from, to }]) => (
-                                <tr key={field} className="border-t border-[color:var(--line)]">
-                                  <td className="py-1.5 pr-3 font-mono font-semibold">{field}</td>
-                                  <td className="py-1.5 pr-3 text-[color:var(--rep)]">{formatValue(from)}</td>
-                                  <td className="py-1.5 text-[color:var(--success)]">{formatValue(to)}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="mb-2 text-xs font-medium uppercase tracking-wide text-[color:var(--mut)]">
-                            {tr("ሙሉ መዝገብ", "Full record")}
-                          </div>
-                          <pre className="overflow-auto rounded bg-white p-3 font-mono text-[11px] leading-snug">
-                            {JSON.stringify(r.changes || {}, null, 2)}
-                          </pre>
-                        </>
-                      )}
-                    </td>
-                  </tr>
+                  </>
                 )}
-              </Fragment>
-            );
-          })}
-        </tbody>
-      </table>
+              </div>
+              <div className="md:text-right">
+                <Button variant="ghost" size="xs" onClick={() => toggle(r.id)} aria-expanded={isOpen}>
+                  {isOpen ? "▲" : "▼"} {tr("ዝርዝር", "Details")}
+                </Button>
+              </div>
+            </div>
+
+            {isOpen && (
+              <div className="mt-3 rounded-[var(--r)] bg-[color:var(--bg)] p-3">
+                {r.action === "UPDATE" && r.diff && diffKeys.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[420px] text-xs">
+                      <thead>
+                        <tr className="text-left text-[10px] uppercase text-[color:var(--mut)]">
+                          <th className="w-40 pb-1">{tr("መስክ", "Field")}</th>
+                          <th className="pb-1">{tr("ከ", "From")}</th>
+                          <th className="pb-1">{tr("ወደ", "To")}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {diffKeys.map((k) => (
+                          <tr key={k} className="border-t border-[color:var(--line)]">
+                            <td className="py-1.5 pr-3 font-medium">{fieldLabel(k, locale)}</td>
+                            <td className="py-1.5 pr-3 text-[color:var(--rep)]">{fmtValue(k, r.diff![k].from, locale)}</td>
+                            <td className="py-1.5 text-[color:var(--success)]">{fmtValue(k, r.diff![k].to, locale)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <pre className="max-h-64 overflow-auto rounded bg-white p-3 font-mono text-[11px] leading-snug">
+                    {JSON.stringify(r.changes ?? {}, null, 2)}
+                  </pre>
+                )}
+                <p className="mt-2 font-mono text-[10px] text-[color:var(--mut)]">
+                  {r.entity} · {r.entity_id}
+                  {r.actor_id ? ` · ${r.actor_id.slice(0, 8)}…` : ""}
+                </p>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
-}
-
-function formatValue(v: unknown): string {
-  if (v === null || v === undefined) return "—";
-  if (typeof v === "string") return v.length > 100 ? v.slice(0, 100) + "…" : v;
-  if (typeof v === "object") return JSON.stringify(v).slice(0, 100);
-  return String(v);
 }
