@@ -86,17 +86,10 @@ const STAMP_DATA_URL: string | null =
 
 const S = StyleSheet.create({
   page: {
-<<<<<<< HEAD
     // Clears the header
     paddingTop: "76mm",
     // Allows table to flow further
     paddingBottom: "25mm",
-=======
-    // Leave room at the top for the absolute header
-    paddingTop: "65mm",
-    // Leave room at the bottom so content doesn't get cut off by the stamp or page end
-    paddingBottom: "45mm",
->>>>>>> a7746c1566c3599277a1d773bbf41a6226403684
     paddingHorizontal: "11mm",
     fontSize: 9,
     fontFamily: "Ethiopic",
@@ -172,12 +165,6 @@ const S = StyleSheet.create({
     borderBottomColor: "#000",
     minHeight: "4mm",
     fontSize: 9.5,
-<<<<<<< HEAD
-=======
-  },
-  tableWrapper: {
-    position: "relative",
->>>>>>> a7746c1566c3599277a1d773bbf41a6226403684
   },
   table: {
     borderWidth: 0.5,
@@ -213,10 +200,6 @@ const S = StyleSheet.create({
     flexDirection: "row",
     borderBottomWidth: 0.3,
     borderColor: "#000",
-<<<<<<< HEAD
-=======
-    minHeight: "6.8mm",
->>>>>>> a7746c1566c3599277a1d773bbf41a6226403684
   },
   tdNo: {
     width: "10mm",
@@ -238,19 +221,13 @@ const S = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     paddingHorizontal: "1mm",
-<<<<<<< HEAD
     paddingVertical: "1.5mm",
-=======
->>>>>>> a7746c1566c3599277a1d773bbf41a6226403684
   },
   tdPartBordered: {
     flex: 1,
     justifyContent: "center",
     paddingHorizontal: "1mm",
-<<<<<<< HEAD
     paddingVertical: "1.5mm",
-=======
->>>>>>> a7746c1566c3599277a1d773bbf41a6226403684
     borderRightWidth: 0.3,
     borderColor: "#000",
   },
@@ -260,40 +237,26 @@ const S = StyleSheet.create({
     flexWrap: "wrap",
   },
   tdAm: {
-<<<<<<< HEAD
     fontSize: 9.5,
-=======
-    fontSize: 11,
->>>>>>> a7746c1566c3599277a1d773bbf41a6226403684
     fontWeight: 700,
     marginRight: 3,
     lineHeight: 1.1,
   },
   tdEn: {
-<<<<<<< HEAD
     fontSize: 8,
-=======
-    fontSize: 9,
->>>>>>> a7746c1566c3599277a1d773bbf41a6226403684
     color: "#000",
     fontWeight: 700,
     paddingBottom: 0.8,
     lineHeight: 1.1,
   },
   tdRemark: {
-<<<<<<< HEAD
     fontSize: 7,
     color: "#000",
     marginTop: 0.5,
     lineHeight: 1.1,
-=======
-    fontSize: 7.5,
-    color: "#000",
-    marginTop: 0.5,
->>>>>>> a7746c1566c3599277a1d773bbf41a6226403684
   },
   tdMeta: {
-    fontSize: 7,
+    fontSize: 6.5,
     color: "#444",
     marginTop: 0.5,
     letterSpacing: 0.2,
@@ -301,7 +264,6 @@ const S = StyleSheet.create({
     lineHeight: 1.1,
   },
   notes: {
-<<<<<<< HEAD
     marginTop: "10mm",
     fontSize: 9,
     lineHeight: 1.3,
@@ -309,15 +271,6 @@ const S = StyleSheet.create({
   },
   notesTtl: {
     fontSize: 10,
-=======
-    marginTop: "8mm",
-    fontSize: 9.5,
-    lineHeight: 1.4,
-    paddingRight: "55mm",
-  },
-  notesTtl: {
-    fontSize: 10.5,
->>>>>>> a7746c1566c3599277a1d773bbf41a6226403684
     fontWeight: 700,
     textDecoration: "underline",
     marginBottom: "1.5mm",
@@ -342,30 +295,18 @@ const S = StyleSheet.create({
   },
   stampWrap: {
     position: "absolute",
-<<<<<<< HEAD
     // FIX: Moved down from 12mm to 4mm so it sits at the very bottom and doesn't cover text
     bottom: "4mm",
     right: "12mm",
     width: "38mm",
     height: "38mm",
-=======
-    bottom: "10mm",
-    right: "5mm",
-    width: "50mm",
-    height: "50mm",
->>>>>>> a7746c1566c3599277a1d773bbf41a6226403684
     transform: "rotate(-12deg)",
     opacity: 0.85,
     zIndex: 10,
   },
   stampImage: {
-<<<<<<< HEAD
     width: "38mm",
     height: "38mm",
-=======
-    width: "50mm",
-    height: "50mm",
->>>>>>> a7746c1566c3599277a1d773bbf41a6226403684
     objectFit: "contain",
   },
 });
@@ -388,15 +329,9 @@ export function SurveyReportPdf({
   const replaces = items.filter((i) => i.action === "replace");
   const repairs = items.filter((i) => i.action === "repair");
   
-  // Total number of rows is the maximum length between the two lists
   const totalItems = Math.max(replaces.length, repairs.length);
   
-<<<<<<< HEAD
   // Dynamically create rows to allow React-PDF to handle native pagination
-=======
-  // Create an array to map over. React-PDF handles the automatic page breaks
-  // because of `wrap={false}` on each row.
->>>>>>> a7746c1566c3599277a1d773bbf41a6226403684
   const rows = Array.from({ length: Math.max(1, totalItems) }).map((_, i) => i);
 
   const recNums = replaces
